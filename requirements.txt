@@ -1,0 +1,16 @@
+gym >= 0.26
+numpy >= 1.20.2
+distrax >= 0.1.2
+jax == 0.4.20
+flax >= 0.6.5
+ml_collections >= 0.1.0
+tqdm >= 4.60.0
+optax >= 0.1.4
+absl-py >= 0.12.0
+scipy >= 1.6.0
+wandb >= 0.12.14
+tensorflow == 2.13.1
+moviepy >= 1.0.3
+imageio[ffmpeg]
+tensorflow-hub == 0.12.0
+tensorflow-text == 2.13.0

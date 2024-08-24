@@ -1,0 +1,55 @@
+name: palo
+channels:
+  - conda-forge
+  - defaults
+  - nvidia
+dependencies:
+  - python=3.9
+  - pip=21.0
+  - numpy<=1.23
+  - scipy=1.12
+  - tqdm>=4.60.0
+  - optax>=0.1.4
+  - absl-py>=0.12.0
+  - wandb>=0.12.14
+  - moviepy>=1.0.3
+  - imageio[ffmpeg]
+  - matplotlib=3.8.2
+  - setuptools==65.5.0
+  - google-auth==2.7.0
+  - lockfile=0.12
+  - imageio=2.19
+  - ml-collections=0.1
+  - distrax<2
+  - imageio[ffmpeg]
+  - mesalib
+  - glew
+  - jax==0.4.20
+  - cudatoolkit
+  - cudnn
+  - cuda-nvcc
+  - patchelf
+  - optax==0.1.7
+  - pip:
+    - jaxlib==0.4.20+cuda11.cudnn86
+    - flax==0.6.11
+    - chex==0.1.7
+    - tensorflow-cpu==2.11
+    - tensorflow-hub==0.12
+    - tensorflow-text==2.11
+    - tensorflow-probability==0.19
+    - tensorflow-datasets==4.9
+    - tensorflow-estimator==2.11
+    - tensorboard==2.11
+    - transformers==4.25
+    - gym==0.23
+    - orbax-checkpoint==0.3.5
+    - opencv-python==4.9
+    - einops==0.8.0
+    - -e .
+    - -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html 
+    - openai==1.31.1
+variables:
+  TF_FORCE_GPU_ALLOW_GROWTH: "true"
+  XLA_PYTHON_CLIENT_PREALLOCATE: "false"
+
