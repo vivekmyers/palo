@@ -114,7 +114,8 @@ def query_long_horizon(obs, instrs):
     obs = encode_image(obs)
     prompt=f"""
     Here is an image observed by the robot in a robot manipulation environment. The gripper is at the top left corner in the image.
-    Now plan for the the list of subtasks and skills the robot needs to perform in order to {instrs}. A subtask is one task primitive a robot can complete. For example, \"put A into B\", \"Sweep A to the right\", and \"Open the drawer\" are valid subtasks.
+    Now plan for the the list of subtasks and skills the robot needs to perform in order to {instrs}. 
+    A subtask is one set of actions connected in a logical manner. For example, \"put A into B\", \"Sweep A to the right\", and \"Open the drawer\" are valid subtasks.
     
     For each subtask, you need to plan for the steps the robot needs to take in order to complete the subtask. Each step in the plan can be selected from the available skills below:
 
