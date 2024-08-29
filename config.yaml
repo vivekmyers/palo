@@ -1,0 +1,530 @@
+wandb_version: 1
+
+agent:
+  desc: null
+  value: multimodal
+agent_kwargs:
+  desc: null
+  value:
+    alignment: 0.0
+    decay_steps: 2000000
+    early_fuse_initial_obs: true
+    early_fusion: true
+    flatten_task_reps: false
+    learning_rate: 0.0003
+    network_kwargs:
+      hidden_dims:
+      - 256
+      - 256
+      - 256
+    policy_kwargs:
+      dropout: 0.1
+      fixed_std:
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      state_dependent_std: false
+      tanh_squash_distribution: false
+    use_proprio: false
+    warmup_steps: 2000
+augment_language:
+  desc: null
+  value: false
+batch_size:
+  desc: null
+  value: 128
+clip_resume_path:
+  desc: null
+  value: null
+data_path:
+  desc: null
+  value: gs://bill-central-2/bridge-tf-relabel-06-04-6
+dataset_kwargs:
+  desc: null
+  value:
+    augment: true
+    augment_kwargs:
+      augment_order:
+      - random_resized_crop
+      - random_brightness
+      - random_contrast
+      - random_saturation
+      - random_hue
+      random_brightness:
+      - 0.2
+      random_contrast:
+      - 0.8
+      - 1.2
+      random_hue:
+      - 0.1
+      random_resized_crop:
+        ratio:
+        - 0.9
+        - 1.1
+        scale:
+        - 0.8
+        - 1.0
+      random_saturation:
+      - 0.8
+      - 1.2
+    augment_next_obs_goal_differently: false
+    clip_preprocessing: false
+    goal_relabel_reached_proportion: 0.0
+    prefetch_num_batches: 20
+    relabel_actions: true
+    shuffle_buffer_size: 25000
+domain_weight:
+  desc: null
+  value: null
+encoder:
+  desc: null
+  value: resnetv1-34-bridge-task-x-units
+encoder_kwargs:
+  desc: null
+  value:
+    act: swish
+    add_spatial_coordinates: true
+    pooling_method: avg
+    task_units: 256
+eval_interval:
+  desc: null
+  value: 5000
+log_interval:
+  desc: null
+  value: 100
+num_annotations:
+  desc: null
+  value: null
+num_steps:
+  desc: null
+  value: 300000
+resume_path:
+  desc: null
+  value: null
+save_dir:
+  desc: null
+  value: gs://bill-central-2/logs
+save_interval:
+  desc: null
+  value: 5000
+seed:
+  desc: null
+  value: 42
+ss2_batch_size:
+  desc: null
+  value: 0
+ss2_dataset_kwargs:
+  desc: null
+  value:
+    augment: true
+    augment_kwargs:
+      augment_order:
+      - random_resized_crop
+      - random_brightness
+      - random_contrast
+      - random_saturation
+      - random_hue
+      random_brightness:
+      - 0.2
+      random_contrast:
+      - 0.8
+      - 1.2
+      random_hue:
+      - 0.1
+      random_resized_crop:
+        ratio:
+        - 0.9
+        - 1.1
+        scale:
+        - 0.8
+        - 1.0
+      random_saturation:
+      - 0.8
+      - 1.2
+    augment_next_obs_goal_differently: false
+    prefetch_num_batches: 20
+    shuffle_buffer_size: 25
+ss2_labels_path:
+  desc: null
+  value: gs://rail-tpus-andre/something-something/labels/
+ss2_train_path:
+  desc: null
+  value: gs://rail-tpus-andre/something-something/tf_fixed/train/
+ss2_val_batch_size:
+  desc: null
+  value: 128
+ss2_val_path:
+  desc: null
+  value: gs://rail-tpus-andre/something-something/tf_fixed/validation/
+task_encoder_kwargs:
+  desc: null
+  value:
+    image:
+      act: swish
+      add_spatial_coordinates: true
+      pooling_method: avg
+    language: {}
+    language_joint: {}
+    language_low_level: {}
+task_encoders:
+  desc: null
+  value:
+    language: muse
+    language_joint: muse
+    language_low_level: muse
+use_image_embeddings:
+  desc: null
+  value: false
+use_image_embeds_as_inputs:
+  desc: null
+  value: false
+use_text_embeddings:
+  desc: null
+  value: false
+use_text_embeds_as_inputs:
+  desc: null
+  value: false
+hostname:
+  desc: null
+  value: t1v-n-5779a77c-w-0
+_wandb:
+  desc: null
+  value:
+    code_path: code/experiments/vivek/bridgedata_offline_gc.py
+    python_version: 3.9.19
+    cli_version: 0.17.0
+    framework: huggingface
+    huggingface_version: 4.25.0
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    start_time: 1717575378
+    t:
+      1:
+      - 2
+      - 3
+      - 11
+      - 12
+      - 45
+      - 49
+      - 55
+      - 95
+      2:
+      - 2
+      - 3
+      - 11
+      - 12
+      - 45
+      - 49
+      - 55
+      - 95
+      3:
+      - 14
+      - 16
+      - 23
+      - 61
+      4: 3.9.19
+      5: 0.17.0
+      6: 4.25.0
+      8:
+      - 5
+      13: linux-x86_64
+logtostderr:
+  desc: null
+  value: false
+alsologtostderr:
+  desc: null
+  value: false
+log_dir:
+  desc: null
+  value: ''
+v:
+  desc: null
+  value: 0
+verbosity:
+  desc: null
+  value: 0
+logger_levels:
+  desc: null
+  value: {}
+stderrthreshold:
+  desc: null
+  value: fatal
+showprefixforinfo:
+  desc: null
+  value: true
+chex_n_cpu_devices:
+  desc: null
+  value: 1
+chex_assert_multiple_cpu_devices:
+  desc: null
+  value: false
+run_with_pdb:
+  desc: null
+  value: false
+pdb_post_mortem:
+  desc: null
+  value: false
+pdb:
+  desc: null
+  value: false
+run_with_profiling:
+  desc: null
+  value: false
+profile_file:
+  desc: null
+  value: null
+use_cprofile_for_profiling:
+  desc: null
+  value: true
+only_check_args:
+  desc: null
+  value: false
+test_srcdir:
+  desc: null
+  value: ''
+test_tmpdir:
+  desc: null
+  value: /tmp/absl_testing
+test_random_seed:
+  desc: null
+  value: 301
+test_randomize_ordering_seed:
+  desc: null
+  value: ''
+xml_output_file:
+  desc: null
+  value: ''
+chex_skip_pmap_variant_if_single_device:
+  desc: null
+  value: true
+op_conversion_fallback_to_while_loop:
+  desc: null
+  value: true
+runtime_oom_exit:
+  desc: null
+  value: true
+hbm_oom_exit:
+  desc: null
+  value: true
+delta_threshold:
+  desc: null
+  value: 0.5
+tt_check_filter:
+  desc: null
+  value: false
+tt_single_core_summaries:
+  desc: null
+  value: false
+tfhub_cache_dir:
+  desc: null
+  value: null
+tfhub_model_load_format:
+  desc: null
+  value: AUTO
+name:
+  desc: null
+  value: all_multimodal_lcbc
+debug:
+  desc: null
+  value: false
+finetune_val_scene:
+  desc: null
+  value: false
+config:
+  desc: null
+  value:
+    agent: multimodal
+    agent_kwargs:
+      alignment: 0.0
+      decay_steps: 2000000
+      early_fuse_initial_obs: true
+      early_fusion: true
+      flatten_task_reps: false
+      learning_rate: 0.0003
+      network_kwargs:
+        hidden_dims:
+        - 256
+        - 256
+        - 256
+      policy_kwargs:
+        dropout: 0.1
+        fixed_std:
+        - 1
+        - 1
+        - 1
+        - 1
+        - 1
+        - 1
+        - 1
+        state_dependent_std: false
+        tanh_squash_distribution: false
+      use_proprio: false
+      warmup_steps: 2000
+    augment_language: false
+    batch_size: 128
+    clip_resume_path: null
+    data_path: gs://bill-central-2/bridge-tf-relabel-06-04-6
+    dataset_kwargs:
+      augment: true
+      augment_kwargs:
+        augment_order:
+        - random_resized_crop
+        - random_brightness
+        - random_contrast
+        - random_saturation
+        - random_hue
+        random_brightness:
+        - 0.2
+        random_contrast:
+        - 0.8
+        - 1.2
+        random_hue:
+        - 0.1
+        random_resized_crop:
+          ratio:
+          - 0.9
+          - 1.1
+          scale:
+          - 0.8
+          - 1.0
+        random_saturation:
+        - 0.8
+        - 1.2
+      augment_next_obs_goal_differently: false
+      clip_preprocessing: false
+      goal_relabel_reached_proportion: 0.0
+      prefetch_num_batches: 20
+      relabel_actions: true
+      shuffle_buffer_size: 25000
+    domain_weight: null
+    encoder: resnetv1-34-bridge-task-x-units
+    encoder_kwargs:
+      act: swish
+      add_spatial_coordinates: true
+      pooling_method: avg
+      task_units: 256
+    eval_interval: 5000
+    log_interval: 100
+    num_annotations: null
+    num_steps: 300000
+    resume_path: null
+    save_dir: gs://bill-central-2/logs
+    save_interval: 5000
+    seed: 42
+    ss2_batch_size: 0
+    ss2_dataset_kwargs:
+      augment: true
+      augment_kwargs:
+        augment_order:
+        - random_resized_crop
+        - random_brightness
+        - random_contrast
+        - random_saturation
+        - random_hue
+        random_brightness:
+        - 0.2
+        random_contrast:
+        - 0.8
+        - 1.2
+        random_hue:
+        - 0.1
+        random_resized_crop:
+          ratio:
+          - 0.9
+          - 1.1
+          scale:
+          - 0.8
+          - 1.0
+        random_saturation:
+        - 0.8
+        - 1.2
+      augment_next_obs_goal_differently: false
+      prefetch_num_batches: 20
+      shuffle_buffer_size: 25
+    ss2_labels_path: gs://rail-tpus-andre/something-something/labels/
+    ss2_train_path: gs://rail-tpus-andre/something-something/tf_fixed/train/
+    ss2_val_batch_size: 128
+    ss2_val_path: gs://rail-tpus-andre/something-something/tf_fixed/validation/
+    task_encoder_kwargs:
+      image:
+        act: swish
+        add_spatial_coordinates: true
+        pooling_method: avg
+      language: {}
+      language_joint: {}
+      language_low_level: {}
+    task_encoders:
+      language: muse
+      language_joint: muse
+      language_low_level: muse
+    use_image_embeddings: false
+    use_image_embeds_as_inputs: false
+    use_text_embeddings: false
+    use_text_embeds_as_inputs: false
+bridgedata_config:
+  desc: null
+  value:
+    action_metadata:
+      mean:
+      - 7.99e-05
+      - 0.00029883
+      - -0.00014265
+      - -7.046e-05
+      - -3.96e-06
+      - 8.324e-05
+      - 0.5428687
+      std:
+      - 0.0073178
+      - 0.01133177
+      - 0.01211691
+      - 0.01779856
+      - 0.02181558
+      - 0.08579306
+      - 0.49777785
+    align_include:
+    - - icra/*/*/*
+      - icra_validation/?*/?*/?*
+      - rss/?*/?*/?*
+      - bridge_data_v2/?*/?*/?*
+    exclude:
+    - '*sweep_12-03*'
+    - icra/?*/?*/00
+    - icra_validation/?*/?*/00
+    - flap/?*/?*/00
+    - bridge_data_v1/berkeley/?*/00
+    - rss/?*/?*/00
+    - bridge_data_v2/?*/?*/00
+    include:
+    - - icra/?*/?*/?*
+      - icra_validation/?*/?*/?*
+      - flap/?*/?*/?*
+      - bridge_data_v1/berkeley/?*/?*
+      - rss/?*/?*/?*
+      - bridge_data_v2/?*/?*/?*
+    sample_weights: null
+    val_scene_include:
+    - - icra/?*/?*/00
+      - icra_validation/?*/?*/00
+      - flap/?*/?*/00
+      - bridge_data_v1/berkeley/?*/00
+      - rss/?*/?*/00
+      - bridge_data_v2/?*/?*/00
+'?':
+  desc: null
+  value: false
+help:
+  desc: null
+  value: false
+helpshort:
+  desc: null
+  value: false
+helpfull:
+  desc: null
+  value: false
+helpxml:
+  desc: null
+  value: false
