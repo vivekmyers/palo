@@ -32,7 +32,6 @@ flags.DEFINE_string("instruction", None, "High-level task instruction", required
 flags.DEFINE_string(
     "trajectory_path",
     None,
-    None,
     "Trajectories collected",
 )
 
