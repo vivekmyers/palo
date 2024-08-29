@@ -185,8 +185,8 @@ def proc_im_color(im: np.ndarray):
     return im_new
 
 if __name__ == "__main__":
-    im_dim = None
-    instr = "Move the sweet potato in the drawer, after opening the drawer first, but don't close it."
+    im_dim = "./data/traj0/images0/im_0.jpg"
+    instr = "Move the sweet potato in the closed drawer"
     res = make_multiple_response(im_dim, instr, 10)
     for i in res:
         print(i)
