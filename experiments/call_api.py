@@ -143,7 +143,7 @@ def query_long_horizon(obs, instrs):
     Therefore, instead of saying something like \"down\" or \"up\", you should phrase it like \"move the gripper down\" and \"move the gripper up\". 
     Make sure to include at least one direction in your command since otherwise this command format won't make sense.
 
-    If you were to choose to use gripper movement, you should format the command as \"close the gripper to pick up x\" or \"open the gripper to release x\", where x is the target object. 
+    If you were to choose to use gripper movement, you should format the command as \"close the gripper on x\" or \"open the gripper to release x\", where x is the target object. 
     You may discard the target object if necessary. In that case use \"close the gripper\" or \"open the gripper\".
     If you think the gripper is close to the target object, then you must choose to use gripper movement to grasp the target object to maintain efficiency.
     If the task is related to sweeping, after you close the gripper, do not move up until after you have released the gripper. 
