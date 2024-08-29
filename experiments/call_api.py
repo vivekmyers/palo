@@ -180,7 +180,7 @@ def proc_im_color(im: np.ndarray):
 
 if __name__ == "__main__":
     im_dim = "./data/traj0/images0/im_0.jpg"
-    instr = "Put the sweet potato in the closed drawer"
+    instr = "First open the drawer, and then put the sweet potato in the drawer"
     res = make_multiple_response(im_dim, instr, 10)
     for i in res:
         print(i)
