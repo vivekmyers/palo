@@ -20,7 +20,7 @@ from jaxrl_m.agents import agents
 from jaxrl_m.data.bridge_dataset import multi_embed
 from jaxrl_m.data.language import load_mapping
 from jaxrl_m.common.common import shard_batch
-import call_api
+import experiments.call_api
 import json
 
 np.set_printoptions(suppress=True)
