@@ -4,6 +4,7 @@ import pickle
 import time
 import tqdm
 from functools import partial
+import yaml
 
 import numpy as np
 import cv2
@@ -36,7 +37,8 @@ flags.DEFINE_string(
 )
 
 flags.DEFINE_string("checkpoint_path", None, "Checkpoint of the agent", required=True)
-flags.DEFINE_string("wandb_run_name", None, "Name of wandb run", required=True)
+# flags.DEFINE_string("wandb_run_name", None, "Name of wandb run", required=True) we can't use this for public, use config instead
+flags.DEFINE_string("config_dir", None, "Directory of config", required=True)
 flags.DEFINE_integer("im_size", None, "Name of wandb run", required=True)
 flags.DEFINE_integer("max_subtask_steps", 18, "Maximum number of steps per subtask")
 flags.DEFINE_integer("min_subtask_steps", 2, "Minimum number of steps per subtask")
@@ -185,15 +187,15 @@ def process_batch(batch):
 
     return batch.copy(add_or_replace=add_or_replace)
 
-def initialize_agent(run, checkpoint_path):
-    encoder_def = encoders[run.config["encoder"]](**run.config["encoder_kwargs"])
+def initialize_agent(config, checkpoint_path):
+    encoder_def = encoders[config["encoder"]](**config["encoder_kwargs"])
     task_encoder_defs = {
-        k: encoders[run.config["task_encoders"][k]](**run.config["task_encoder_kwargs"][k])
+        k: encoders[config["task_encoders"][k]](**config["task_encoder_kwargs"][k])
         for k in ("image", "language")
-        if k in run.config["task_encoders"]
+        if k in config["task_encoders"]
     }
 
-    load_mapping(run.config["data_path"])
+    load_mapping(config["data_path"])
 
     example_batch = {
         "observations": {"image": np.zeros((10, 224, 224, 3), dtype=np.uint8)},
@@ -208,11 +210,11 @@ def initialize_agent(run, checkpoint_path):
 
     example_batch = process_batch(example_batch)
 
-    print("\n\nRun config kwargs: ", run.config["agent_kwargs"])
+    print("\n\nRun config kwargs: ", config["agent_kwargs"])
 
     rng = jax.random.PRNGKey(0)
     rng, construct_rng = jax.random.split(rng)
-    agent = agents[run.config["agent"]].create(
+    agent = agents[config["agent"]].create(
         rng=construct_rng,
         observations=example_batch["observations"],
         initial_obs=example_batch["initial_obs"],
@@ -220,7 +222,7 @@ def initialize_agent(run, checkpoint_path):
         actions=example_batch["actions"],
         encoder_def=encoder_def,
         task_encoder_defs=task_encoder_defs,
-        **run.config["agent_kwargs"],
+        **config["agent_kwargs"],
     )
 
     checkpoint_local_path = os.path.join("/tmp/cache/", "/".join(checkpoint_path.split("/")[3:]))
@@ -317,9 +319,11 @@ def evaluate_plans():
     states, actions, observations = make_trajectories(FLAGS.trajectory_path)
 
     api = wandb.Api()
-    print("wandb run name, ", FLAGS.wandb_run_name)
-    run = api.run(FLAGS.wandb_run_name)
-    action_metadata = run.config["bridgedata_config"]["action_metadata"]
+    # print("wandb run name, ", FLAGS.wandb_run_name)
+    # run = api.run(FLAGS.wandb_run_name)
+    with open(FLAGS.config_dir, "r") as f:
+        config = yaml.safe_load(f)
+    action_metadata = config["bridgedata_config"]["action_metadata"]
     action_mean = jnp.array(action_metadata["mean"])
     action_std = jnp.array(action_metadata["std"])
 
