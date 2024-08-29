@@ -112,7 +112,7 @@ def sample_from_queries(lst_of_responses):
 
 def query_long_horizon(obs, instrs):
     obs = encode_image(obs)
-    f"""
+    prompt=f"""
     Here is an image observed by the robot in a robot manipulation environment. The gripper is at the top left corner in the image.
     Now plan for the the list of subtasks and skills the robot needs to perform in order to {instrs}. A subtask is one task primitive a robot can complete. For example, \"put A into B\", \"Sweep A to the right\", and \"Open the drawer\" are valid subtasks.
     
