@@ -112,9 +112,9 @@ def sample_from_queries(lst_of_responses):
 
 def query_long_horizon(obs, instrs):
     obs = encode_image(obs)
-    prompt = f"""
+    f"""
     Here is an image observed by the robot in a robot manipulation environment. The gripper is at the top left corner in the image.
-    Now plan for the the list of subtasks and skills the robot needs to perform in order to {instrs}. You need to break down the instruction into a sequence of subtasks, which can be fed into the robot.
+    Now plan for the the list of subtasks and skills the robot needs to perform in order to {instrs}. A subtask is one task primitive a robot can complete. For example, \"put A into B\", \"Sweep A to the right\", and \"Open the drawer\" are valid subtasks.
     
     For each subtask, you need to plan for the steps the robot needs to take in order to complete the subtask. Each step in the plan can be selected from the available skills below:
 
@@ -155,10 +155,9 @@ def query_long_horizon(obs, instrs):
     Start by looking at what objects are in the image, and then plan with the direction of the objects in mind. The tasks should be completed sequentially, therefore you need to consider the position of the gripper after each task before planning the next task. 
     You should return a json dictionary with the following fields:
      - subtask: this should be the key of the dictionary. It should contain the only the verbal description of the subtask the robot needs to perform sequentially in order to finish the task, and they should be ordered in the same way the task is completed.
-     - list of skills per subtask: this should be the value of the dictionary. It should be a list of skills the robot needs to perform in order to finish the corresponding subtask.
-    Do not return any other comments other than the dictionary mentioned above, and make the list as concise as possible.
+     - list of skills for each subtask: this should be the value of the dictionary. It should be a list of skills the robot needs to perform in order to finish the corresponding subtask.
+    Do not start the subtask with \"subtask: \". Do not return any other comments other than the dictionary mentioned above, and make the list as concise as possible.
     """
-
     return query2(obs, prompt)
 
 def make_multiple_response(im, instr, num_res):
