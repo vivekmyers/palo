@@ -33,15 +33,9 @@ def encode_image(im):
         im.save(buf, format='JPEG')
         return base64.b64encode(buf.getvalue()).decode('utf-8')
     elif isinstance(im, str):
-        if None in im:
-            image_file = tf.io.read_file(im)
-            im = tf.io.decode_jpeg(image_file, channels=3).numpy()
-            
-            return encode_image(im)
-        else:
-            with open(im, "rb") as image_file:
-                return base64.b64encode(image_file.read()).decode('utf-8')
-    
+        with open(im, "rb") as image_file:
+            return base64.b64encode(image_file.read()).decode('utf-8')
+
     else:
         raise TypeError("Image should be either a filename string or a np array")
     
