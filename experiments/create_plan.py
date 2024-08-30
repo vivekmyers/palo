@@ -74,30 +74,17 @@ def process_state(path):
     return x["full_state"][:-1], x["full_state"][1:]
 
 def make_trajectories(path):
-    if None in path:
-        trajs = [tf.io.gfile.join(path, i) for i in tf.io.gfile.listdir(path)]
-        states = [process_state(i)[0] for i in trajs]
-        actions = [pad(process_actions(i), FLAGS.max_episode_steps) for i in trajs]
-        ims = [tf.io.gfile.join(i, "images0") for i in trajs]
-        obs = [
-            [
-                squash(tf.io.decode_jpeg(tf.io.read_file(tf.io.gfile.join(p, f"im_{i}.jpg")), channels=3).numpy())
-                for i in range(len(tf.io.gfile.listdir(p)) - 1)
-            ]
-            for p in ims
+    trajs = [os.path.join(path, i) for i in os.listdir(path)]
+    states = [process_state(i)[0] for i in trajs]
+    actions = [pad(process_actions(i), FLAGS.max_episode_steps) for i in trajs]
+    ims = [os.path.join(i, "images0") for i in trajs]
+    obs = [
+        [
+            squash(cv2.cvtColor(cv2.imread(os.path.join(p, f"im_{i}.jpg")), cv2.COLOR_BGR2RGB))
+            for i in range(len(os.listdir(p)) - 1)
         ]
-    else:
-        trajs = [os.path.join(path, i) for i in os.listdir(path)]
-        states = [process_state(i)[0] for i in trajs]
-        actions = [pad(process_actions(i), FLAGS.max_episode_steps) for i in trajs]
-        ims = [os.path.join(i, "images0") for i in trajs]
-        obs = [
-            [
-                squash(cv2.cvtColor(cv2.imread(os.path.join(p, f"im_{i}.jpg")), cv2.COLOR_BGR2RGB))
-                for i in range(len(os.listdir(p)) - 1)
-            ]
-            for p in ims
-        ]
+        for p in ims
+    ]
 
     return states, jnp.array(actions), obs
 
