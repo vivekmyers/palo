@@ -21,7 +21,7 @@ from jaxrl_m.agents import agents
 from jaxrl_m.data.bridge_dataset import multi_embed
 from jaxrl_m.data.language import load_mapping
 from jaxrl_m.common.common import shard_batch
-import experiments.call_api
+import experiments.call_api as call_api
 import json
 
 np.set_printoptions(suppress=True)
@@ -38,7 +38,7 @@ flags.DEFINE_string(
 
 flags.DEFINE_string("checkpoint_path", None, "Checkpoint of the agent", required=True)
 # flags.DEFINE_string("wandb_run_name", None, "Name of wandb run", required=True) we can't use this for public, use config instead
-flags.DEFINE_string("config_dir", None, "Directory of config", required=True)
+flags.DEFINE_string("config_dir", "./agent/config.pkl", "Directory of config")
 flags.DEFINE_integer("im_size", None, "Name of wandb run", required=True)
 flags.DEFINE_integer("max_subtask_steps", 18, "Maximum number of steps per subtask")
 flags.DEFINE_integer("min_subtask_steps", 2, "Minimum number of steps per subtask")
@@ -305,16 +305,16 @@ def evaluate_plans():
     sharding = jax.sharding.PositionalSharding(devices)
     states, actions, observations = make_trajectories(FLAGS.trajectory_path)
 
-    api = wandb.Api()
+    # api = wandb.Api()
     # print("wandb run name, ", FLAGS.wandb_run_name)
     # run = api.run(FLAGS.wandb_run_name)
     with open(FLAGS.config_dir, "r") as f:
-        config = yaml.safe_load(f)
+        config = pickle.load(f)
     action_metadata = config["bridgedata_config"]["action_metadata"]
     action_mean = jnp.array(action_metadata["mean"])
     action_std = jnp.array(action_metadata["std"])
 
-    policy, key = initialize_agent(run, FLAGS.checkpoint_path)
+    policy, key = initialize_agent(config, FLAGS.checkpoint_path)
     policy = jax.device_put(jax.tree_map(jnp.array, policy), sharding.replicate())
 
     best_segment_per_inst_set = []
