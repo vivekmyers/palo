@@ -308,7 +308,7 @@ def evaluate_plans():
     # api = wandb.Api()
     # print("wandb run name, ", FLAGS.wandb_run_name)
     # run = api.run(FLAGS.wandb_run_name)
-    with open(FLAGS.config_dir, "r") as f:
+    with open(FLAGS.config_dir, "rb") as f:
         config = pickle.load(f)
     action_metadata = config["bridgedata_config"]["action_metadata"]
     action_mean = jnp.array(action_metadata["mean"])
