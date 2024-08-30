@@ -182,7 +182,7 @@ def initialize_agent(config, checkpoint_path):
         if k in config["task_encoders"]
     }
 
-    load_mapping(config["data_path"])
+    load_mapping("./agent/")
 
     example_batch = {
         "observations": {"image": np.zeros((10, 224, 224, 3), dtype=np.uint8)},
