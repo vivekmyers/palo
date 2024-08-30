@@ -214,9 +214,9 @@ def initialize_agent(config, checkpoint_path):
 
     checkpoint_local_path = os.path.join("/tmp/cache/", "/".join(checkpoint_path.split("/")[3:]))
 
-    if not tf.io.gfile.exists(checkpoint_local_path):
-        tf.io.gfile.makedirs(checkpoint_local_path)
-        tf.io.gfile.copy(checkpoint_path, checkpoint_local_path)
+    # if not tf.io.gfile.exists(checkpoint_local_path):
+    #     tf.io.gfile.makedirs(checkpoint_local_path)
+    #     tf.io.gfile.copy(checkpoint_path, checkpoint_local_path)
 
     agent = checkpoints.restore_checkpoint(checkpoint_path, agent)
 
