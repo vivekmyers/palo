@@ -231,6 +231,7 @@ multimodal_config_proto = dict(
     task_encoder_kwargs=dict(),
 )
 
+
 def update_config(_prototype=multimodal_config_proto, **kwargs):
     result = dict(_prototype)
     for key, value in kwargs.items():
@@ -244,6 +245,7 @@ def update_config(_prototype=multimodal_config_proto, **kwargs):
         result[key] = value
     result.pop("_overwrite", None)
     return ml_collections.ConfigDict(result)
+
 
 def get_config(config_string):
     possible_structures = {
@@ -728,7 +730,7 @@ def get_config(config_string):
                 ),
             ),
             agent_kwargs=dict(
-                alignment=0.0,  
+                alignment=0.0,
             ),
         ),
         "sg_sl_align_clip_frozen": update_config(
@@ -740,7 +742,6 @@ def get_config(config_string):
             task_encoder_kwargs=dict(
                 image=dict(
                     freeze_encoder=True,
-                    
                     mlp_kwargs=dict(
                         hidden_dims=(256, 512),
                         activation=nn.relu,
@@ -762,13 +763,8 @@ def get_config(config_string):
                 language="clip_text_with_projection",
             ),
             task_encoder_kwargs=dict(
-                image=dict(
-                    
-                ),
-                language=dict(
-                    
-                    
-                ),
+                image=dict(),
+                language=dict(),
             ),
             agent_kwargs=dict(
                 alignment=0.0,
@@ -847,13 +843,8 @@ def get_config(config_string):
                 language="clip_text_with_projection",
             ),
             task_encoder_kwargs=dict(
-                image=dict(
-                    
-                ),
-                language=dict(
-                    
-                    
-                ),
+                image=dict(),
+                language=dict(),
             ),
             agent_kwargs=dict(
                 alignment=1.0,
@@ -882,17 +873,13 @@ def get_config(config_string):
                 ),
             ),
         ),
-        
-        
-        
-        
         "sz_clip_refuse": update_config(
             data_path=None,
             clip_resume_path=None,
             use_image_embeds_as_inputs=True,
             use_text_embeds_as_inputs=True,
             task_encoders=dict(
-                image="resnetv1-18-bridge-task",  
+                image="resnetv1-18-bridge-task",
                 language="resnetv1-18-bridge-task",
             ),
             task_encoder_kwargs=dict(
@@ -952,28 +939,6 @@ def get_config(config_string):
                 alignment=1.0,
             ),
         ),
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
         "sg_sl_resnet_muse": update_config(
             task_encoders=dict(
                 image="resnetv1-18-bridge",
@@ -995,7 +960,6 @@ def get_config(config_string):
                 alignment=0.0,
             ),
         ),
-        
         "bc_resnet_muse": update_config(
             task_encoders=dict(
                 image="resnetv1-18-bridge",
@@ -1014,7 +978,7 @@ def get_config(config_string):
             ),
         ),
         "lcbc": update_config(
-            data_path=None, 
+            data_path=None,
             task_encoders=dict(
                 language="muse",
                 language_low_level="muse",
@@ -1023,7 +987,6 @@ def get_config(config_string):
             task_encoder_kwargs=dict(
                 image=dict(
                     pooling_method="avg",
-
                     add_spatial_coordinates=True,
                     act="swish",
                 ),
@@ -1039,29 +1002,29 @@ def get_config(config_string):
             augment_language=False,
         ),
         "lcbc_fixed": update_config(
-                    data_path=None, 
-                    task_encoders=dict(
-                        language="muse",
-                        language_low_level="muse",
-                        language_joint="muse",
-                    ),
-                    task_encoder_kwargs=dict(
-                        image=dict(
-                            pooling_method="avg",
-                            add_spatial_coordinates=True,
-                            act="swish",
-                        ),
-                        language=dict(),
-                        language_low_level=dict(),
-                        language_joint=dict(),
-                    ),
-                    agent_kwargs=dict(
-                        alignment=0.0,
-                        early_fuse_initial_obs=True,
-                    ),
-                    num_annotations=None,
-                    augment_language=False,
+            data_path=None,
+            task_encoders=dict(
+                language="muse",
+                language_low_level="muse",
+                language_joint="muse",
+            ),
+            task_encoder_kwargs=dict(
+                image=dict(
+                    pooling_method="avg",
+                    add_spatial_coordinates=True,
+                    act="swish",
                 ),
+                language=dict(),
+                language_low_level=dict(),
+                language_joint=dict(),
+            ),
+            agent_kwargs=dict(
+                alignment=0.0,
+                early_fuse_initial_obs=True,
+            ),
+            num_annotations=None,
+            augment_language=False,
+        ),
         "lcbc_noinitial": update_config(
             data_path=None,
             task_encoders=dict(
@@ -1111,7 +1074,6 @@ def get_config(config_string):
                 alignment=1.0,
             ),
         ),
-        
         "sg_sl_align_muse_frozen_ss2": update_config(
             ss2_batch_size=128,
             clip_resume_path=None,
@@ -1126,7 +1088,7 @@ def get_config(config_string):
                     act="swish",
                     mlp_kwargs=dict(
                         hidden_dims=(
-                            128,  
+                            128,
                             512,
                         ),
                         activation=nn.relu,
@@ -1150,8 +1112,6 @@ def get_config(config_string):
             drop_encoders=True,
             use_image_embeddings=True,
             use_text_embeddings=True,
-            
-            
             task_encoders=dict(
                 image="clip_vision_with_projection",
                 language="clip_text_with_projection",
@@ -1166,7 +1126,6 @@ def get_config(config_string):
                 ),
             ),
             agent_kwargs=dict(
-                
                 alignment=0.0,
             ),
             dataset_kwargs=dict(
@@ -1229,18 +1188,18 @@ def get_config(config_string):
         ),
     )
 
-    possible_structures[
-        "bc_clip_frozen_embeddings_512_resnet50_no_prefuse_mlp"
-    ] = update_config(
-        possible_structures["bc_clip_frozen_embeddings"],
-        encoder="resnetv1-50-bridge",
-        encoder_kwargs=dict(
-            pooling_method="avg",
-            add_spatial_coordinates=True,
-            act="swish",
-            task_units=512,
-            pre_fuse_mlp=False,
-        ),
+    possible_structures["bc_clip_frozen_embeddings_512_resnet50_no_prefuse_mlp"] = (
+        update_config(
+            possible_structures["bc_clip_frozen_embeddings"],
+            encoder="resnetv1-50-bridge",
+            encoder_kwargs=dict(
+                pooling_method="avg",
+                add_spatial_coordinates=True,
+                act="swish",
+                task_units=512,
+                pre_fuse_mlp=False,
+            ),
+        )
     )
 
     possible_structures["bc_clip_frozen_embeddings_256_resnet50"] = update_config(
@@ -1337,7 +1296,6 @@ def get_config(config_string):
         ),
     )
 
-    
     possible_structures["sg_sl_align_resnet_raw_muse"] = update_config(
         possible_structures["sg_sl_align_resnet_muse"],
         task_encoder_kwargs=dict(
@@ -1366,7 +1324,7 @@ def get_config(config_string):
             fuse_ftmaps=True,
         ),
         task_encoders=dict(
-            image="resnetv1-34-bridge-task",  
+            image="resnetv1-34-bridge-task",
             language="resnetv1-34-bridge-task",
         ),
         task_encoder_kwargs=dict(
@@ -1482,7 +1440,6 @@ def get_config(config_string):
         task_encoders=dict(
             image="resnetv1-18-bridge",
         ),
-        
         use_image_embeds_as_inputs=False,
         use_text_embeds_as_inputs=False,
         dataset_kwargs=dict(
@@ -1496,9 +1453,8 @@ def get_config(config_string):
             early_fuse_initial_obs=True,
         ),
     )
-    
+
     possible_structures["bc_clip_thawed_ss0_ef"] = update_config(
-        
         clip_resume_path=None,
         encoder="resnetv1-34-bridge",
         encoder_kwargs=dict(
@@ -1510,9 +1466,6 @@ def get_config(config_string):
         task_encoders=dict(
             image="clip_vision_with_projection",
             language="clip_text_with_projection",
-            
-            
-            
         ),
         task_encoder_kwargs=dict(
             image=dict(
@@ -1521,13 +1474,6 @@ def get_config(config_string):
             language=dict(
                 normalize=True,
             ),
-            
-            
-            
-            
-            
-            
-            
         ),
         agent_kwargs=dict(
             alignment=0.0,
@@ -1566,14 +1512,13 @@ def get_config(config_string):
         ),
     )
 
-    
     possible_structures["bc_clip_thawed_ss0_ef_0.0x_lr"] = update_config(
         possible_structures["bc_clip_thawed_ss0_ef"],
         agent_kwargs=dict(
             clip_encoder_lr_multiplier=0.0,
         ),
     )
-    
+
     possible_structures["bc_clip_frozen_ss0_ef"] = update_config(
         possible_structures["bc_clip_thawed_ss0_ef"],
         task_encoder_kwargs=dict(
@@ -1640,7 +1585,6 @@ def get_config(config_string):
         ),
     )
 
-    
     possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"] = update_config(
         possible_structures["bc_clip_thawed_ss0_ef"],
         data_path=None,
@@ -1650,15 +1594,6 @@ def get_config(config_string):
                 freeze_encoder=True,
                 freeze_projection=True,
             ),
-            
-            
-            
-            
-            
-            
-            
-            
-            
         ),
         agent_kwargs=dict(
             alignment=1.0,
@@ -1714,51 +1649,51 @@ def get_config(config_string):
         ),
     )
 
-    possible_structures[
-        "bc_clip_1.0_align_0.1x_lr_frozen_lang_image_from_lang"
-    ] = update_config(
-        possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
-        agent_kwargs=dict(
-            alignment=1.0,
-            other_alignment=0.0,
-        ),
+    possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang_image_from_lang"] = (
+        update_config(
+            possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
+            agent_kwargs=dict(
+                alignment=1.0,
+                other_alignment=0.0,
+            ),
+        )
     )
-    possible_structures[
-        "bc_clip_1.0_align_0.1x_lr_frozen_lang_image_from_lang"
-    ] = update_config(
-        possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
-        agent_kwargs=dict(
-            alignment=1.0,
-            other_alignment=0.0,
-        ),
-    )
-
-    possible_structures[
-        "bc_clip_1.0_align_0.1x_lr_frozen_lang_lang_from_image"
-    ] = update_config(
-        possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
-        agent_kwargs=dict(
-            alignment=0.0,
-            other_alignment=1.0,
-        ),
+    possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang_image_from_lang"] = (
+        update_config(
+            possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
+            agent_kwargs=dict(
+                alignment=1.0,
+                other_alignment=0.0,
+            ),
+        )
     )
 
-    possible_structures[
-        "bc_clip_1.0_align_0.1x_lr_frozen_lang_freeze_B"
-    ] = update_config(
-        possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
-        agent_kwargs=dict(
-            freeze_task_B=True,
-        ),
+    possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang_lang_from_image"] = (
+        update_config(
+            possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
+            agent_kwargs=dict(
+                alignment=0.0,
+                other_alignment=1.0,
+            ),
+        )
     )
 
-    possible_structures[
-        "bc_clip_1.0_align_0.1x_lr_thawed_lang_freeze_B"
-    ] = update_config(
-        possible_structures["bc_clip_1.0_align_0.1x_lr_thawed_lang"],
-        agent_kwargs=dict(
-            freeze_task_B=True,
-        ),
+    possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang_freeze_B"] = (
+        update_config(
+            possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
+            agent_kwargs=dict(
+                freeze_task_B=True,
+            ),
+        )
+    )
+
+    possible_structures["bc_clip_1.0_align_0.1x_lr_thawed_lang_freeze_B"] = (
+        update_config(
+            possible_structures["bc_clip_1.0_align_0.1x_lr_thawed_lang"],
+            agent_kwargs=dict(
+                freeze_task_B=True,
+            ),
+        )
     )
 
     possible_structures["bc_clip_1.0_align_0.1x_lr_tune_proj"] = update_config(
@@ -1781,7 +1716,6 @@ def get_config(config_string):
         ),
     )
 
-    
     possible_structures["bc_clip_GL"] = update_config(
         possible_structures["bc_clip_thawed_ss0_ef"],
         data_path=None,
@@ -1800,8 +1734,6 @@ def get_config(config_string):
         ),
     )
 
-    
-    
     possible_structures["bc_clip_no_align_0.1x_lr_frozen_lang"] = update_config(
         possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
         data_path=None,
@@ -1811,17 +1743,14 @@ def get_config(config_string):
         ),
     )
 
-    
     possible_structures["bc_clip_prealign_0.1x_lr_frozen_lang"] = update_config(
         possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
         data_path=None,
-        
         agent_kwargs=dict(
             alignment=0.0,
         ),
     )
 
-    
     possible_structures["bc_clip_frozen"] = update_config(
         possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
         data_path=None,
@@ -1840,7 +1769,6 @@ def get_config(config_string):
     possible_structures["bc_clip_frozen_rebuttal_1k"] = update_config(
         possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
         clip_resume_path=None,
-        
         data_path=None,
         num_annotations=1000,
         task_encoder_kwargs=dict(
@@ -1858,7 +1786,6 @@ def get_config(config_string):
     possible_structures["bc_clip_frozen_rebuttal_1k"] = update_config(
         possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
         clip_resume_path=None,
-        
         data_path=None,
         num_annotations=1000,
         task_encoder_kwargs=dict(
@@ -1876,7 +1803,6 @@ def get_config(config_string):
     possible_structures["bc_clip_frozen_rebuttal_3k"] = update_config(
         possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
         clip_resume_path=None,
-        
         data_path=None,
         num_annotations=3000,
         task_encoder_kwargs=dict(
@@ -1894,7 +1820,6 @@ def get_config(config_string):
     possible_structures["bc_clip_frozen_rebuttal_5k"] = update_config(
         possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
         clip_resume_path=None,
-        
         data_path=None,
         num_annotations=5000,
         task_encoder_kwargs=dict(
@@ -1912,7 +1837,6 @@ def get_config(config_string):
     possible_structures["bc_clip_frozen_rebuttal_7k"] = update_config(
         possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
         clip_resume_path=None,
-        
         data_path=None,
         num_annotations=7000,
         task_encoder_kwargs=dict(
@@ -1930,7 +1854,6 @@ def get_config(config_string):
     possible_structures["bc_clip_frozen_rebuttal_aug"] = update_config(
         possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
         clip_resume_path=None,
-        
         data_path=None,
         task_encoder_kwargs=dict(
             image=dict(
@@ -1947,11 +1870,7 @@ def get_config(config_string):
     possible_structures["bc_clip_frozen_rebuttal_no_aug"] = update_config(
         possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
         clip_resume_path=None,
-        
-        
-        
         data_path=None,
-        
         augment_language=False,
         task_encoder_kwargs=dict(
             image=dict(
@@ -1965,13 +1884,11 @@ def get_config(config_string):
         ),
     )
 
-    
     possible_structures["bcz"] = update_config(
         possible_structures["sg_l_align_resnet_muse"],
         data_path=None,
     )
 
-    
     possible_structures["bcz_fixed"] = update_config(
         possible_structures["sg_l_align_resnet_muse"],
         data_path=None,
@@ -2005,7 +1922,6 @@ def get_config(config_string):
         ),
     )
 
-    
     possible_structures["language_play"] = update_config(
         possible_structures["sg_sl_align_resnet_muse"],
         data_path=None,
@@ -2014,19 +1930,15 @@ def get_config(config_string):
         ),
     )
 
-    
     possible_structures["bc_clip_from_scratch"] = update_config(
         possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
         data_path=None,
         clip_resume_path=None,
     )
 
-    
-    
     possible_structures["bc_clip_no_prealign"] = update_config(
         possible_structures["bc_clip_1.0_align_0.1x_lr_frozen_lang"],
         data_path=None,
-        
     )
 
     possible_structures["bc_clip_no_prealign_fixed"] = update_config(
@@ -2043,12 +1955,7 @@ def get_config(config_string):
                 clip_encoder_lr_multiplier=0.1,
             ),
         ),
-        
     )
-
-    
-
-    
 
     possible_structures["bc_clip_0.1_align_1.0x_lr_frozen_lang"] = update_config(
         possible_structures["bc_clip_thawed_ss0_ef"],
@@ -2067,11 +1974,6 @@ def get_config(config_string):
 
     possible_structures["bc_clip_ss2_bridge_embeds_frozen"] = update_config(
         possible_structures["bc_clip_thawed_ss0_ef"],
-        
-        
-        
-        
-        
         clip_resume_path=None,
         task_encoder_kwargs=dict(
             image=dict(
@@ -2090,9 +1992,6 @@ def get_config(config_string):
         ),
     )
 
-    
-    
-    
     possible_structures["bc_clip_ls0_align"] = update_config(
         possible_structures["sz_clip_refuse"],
         use_image_embeds_as_inputs=False,

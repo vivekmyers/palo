@@ -135,6 +135,7 @@ PNP_TASKS = [
     "bridge_data_v1/berkeley/tool_chest/pick_up_glue_and_put_into_drawer/",
 ]
 
+
 def get_config(config_string):
     possible_structures = {
         "all": ml_collections.ConfigDict(
@@ -147,7 +148,6 @@ def get_config(config_string):
                         "bridge_data_v1/berkeley/?*/?*",
                         "rss/?*/?*/?*",
                         "bridge_data_v2/?*/?*/?*",
-                        
                     ]
                 ],
                 "align_include": [
@@ -176,7 +176,6 @@ def get_config(config_string):
                     "bridge_data_v1/berkeley/?*/00",
                     "rss/?*/?*/00",
                     "bridge_data_v2/?*/?*/00",
-                    
                 ],
                 "sample_weights": None,
                 "action_metadata": {

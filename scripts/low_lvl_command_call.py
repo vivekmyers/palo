@@ -13,28 +13,26 @@ import io
 from eval_utils import proc_n_encode
 
 
-
-
 client = OpenAI()
 
 
 def encode_image(im):
-    
+
     if isinstance(im, np.ndarray):
         im = Image.fromarray(im)
         buf = io.BytesIO()
         im.save(buf, format='JPEG')
         return base64.b64encode(buf.getvalue()).decode('utf-8')
-    
+
     elif isinstance(im, str):
         with open(im, "rb") as image_file:
             return base64.b64encode(image_file.read()).decode('utf-8')
-    
+
     else:
         raise TypeError("Image should be either a filename string or a np array")
-    
-    
-def query2(im, x):
+
+
+def query1(im, x):
     messages = [
         {
             "role": "system",
@@ -58,14 +56,14 @@ def query2(im, x):
         "temperature": 0.2,
     }
     result = client.chat.completions.create(**params)
-    
-    
-    
 
-    return result.choices[0].message.content 
 
-def query3(obs_start, obs_curr, x):
-    
+
+
+    return result.choices[0].message.content
+
+def query2(obs_start, obs_curr, x):
+
     messages = [
         {
             "role": "system",
@@ -90,7 +88,7 @@ def query3(obs_start, obs_curr, x):
         "max_tokens": 500,
     }
     result = client.chat.completions.create(**params)
-    
+
     return [result.choices[i].message.content for i in range(len(result.choices))]
 
 
@@ -116,26 +114,26 @@ def process_candidates(candidates: list[str]):
 
 def make_plan(obs, big_instr):
     cx = f"""
-    Here is an image observed by a robot in a robot manipulation task. The task is to {big_instr}. Now give me the steps in which the robot must take in order to accomplish this task. 
+    Here is an image observed by a robot in a robot manipulation task. The task is to {big_instr}. Now give me the steps in which the robot must take in order to accomplish this task.
 
     Assume that robots can take in command in the form of "put x into y". First start by identifying the items that are relevant, and then form the commands. Return a python list only
     """
-    return query2(obs, cx)
+    return query1(obs, cx)
 
 def query_mid_way(start_obs, obs, instr, lst_instr, plan: list, plan_idx: int)->list:
-    
+
     im_start = encode_image(start_obs)
     im_curr = encode_image(obs)
 
-    prompt = f"""Here is an image of a robot manipualtion environment observed at the beginning and the current observation of the robot. 
-    
+    prompt = f"""Here is an image of a robot manipualtion environment observed at the beginning and the current observation of the robot.
+
     There is a preexisting plan: {plan} that maps out the motion the robot should take.
 
     Currently the robot is just done executing subplan {plan[plan_idx]},
     Now plan for the subsequent subtasks the robot needs to perform in order to {instr}.
-    
+
     Each step in the plan can be selected from the available skills below:
-    
+
     *reach:
         *reach(x). This skill moves the robot gripper towards a target object x.
 
@@ -153,7 +151,7 @@ def query_mid_way(start_obs, obs, instr, lst_instr, plan: list, plan_idx: int)->
         *close the gripper. This skill controls the robot gripper to close to grasp an object.
         *open the gripper. This skill controls the robot gripper to open and release the object in hand.
 
-    You may choose between using one of reach, movement direction ,and gripper movement. 
+    You may choose between using one of reach, movement direction ,and gripper movement.
     If you were to choose to use reach, you must format your command in the form of \"Move the gripper towards x\", where x is the target object.
     If you were to choose to use movement direction, you may use up to two directions and include a target object, and you should format it like this:
     \"Move the gripper x and y towards z\", where x and y are directions and z is the target object. You also must start your command with \"Move the gripper\"
@@ -168,7 +166,7 @@ def query_mid_way(start_obs, obs, instr, lst_instr, plan: list, plan_idx: int)->
     Return only the subgoals as a python list, without any other additional comments.
 
     """
-    return query3(im_start, im_curr, prompt)
+    return query2(im_start, im_curr, prompt)
 
 
 def query_w_bbox(obs, instr, lst_instr):
@@ -176,7 +174,7 @@ def query_w_bbox(obs, instr, lst_instr):
         lst_instr.append("gripper")
     new_im_b64, _ = proc_n_encode(obs, lst_instr)
 
-    prompt = f"""Here is an image observed by the robot in a robot manipulation environment with a green band on the right of the image and a red band on the left of the image. 
+    prompt = f"""Here is an image observed by the robot in a robot manipulation environment with a green band on the right of the image and a red band on the left of the image.
     Now plan for the the list of subtasks the robot needs to perform in order to {instr}.
 
     Each step in the plan can be selected from the available skills below:
@@ -195,7 +193,7 @@ def query_w_bbox(obs, instr, lst_instr):
         *close the gripper. This skill controls the robot gripper to close to grasp an object.
         *open the gripper. This skill controls the robot gripper to open and release the object in hand.
 
-    You may choose between using one of movement direction or gripper movement. 
+    You may choose between using one of movement direction or gripper movement.
     If you were to choose to use movement direction, you may use up to two directions and include a target object, and you should format it like this:
     \"Move the gripper x and y towards z\", where x and y are directions and z is the target object. You also must start your command with \"Move the gripper\"
     X should be more important than y in terms of direction. If the second direction and the target object are not necessary, you should discard it, but make sure to include at least one direction in your command.
@@ -203,22 +201,22 @@ def query_w_bbox(obs, instr, lst_instr):
     If you were to choose to use gripper movement, you should format the command as \"close the gripper\" or \"open the gripper\", where x is the target object.
     If you think the gripper is close to the target object, then you must choose to use gripper movement to grasp the target object to maintain efficiency.
 
-    Pay close attention to these factors: 
-    *Whether the gripper is closed. 
+    Pay close attention to these factors:
+    *Whether the gripper is closed.
     *Whether the gripper is holding the target object.
-    
+
     Especially pay attention to the actual direction between the gripper and the target object. Reference the color bands on the edge of the image and make logical decisions. The robot's direction is the same as the camera's direction also.
 
     The relevant objects have been segmented and annotated, with the name being shown and each unique object has a different color.
-    
+
     Think this through step by step. However, you should return only the subgoals as a python list, without any other additional comments.
     """
-    return query2(new_im_b64, prompt), new_im_b64
+    return query1(new_im_b64, prompt), new_im_b64
 
 def query_sweep(obs, instr):
     x = f"""
     Here is an image observed by the robot. Now plan for the list of subtasks the robot needs to perform in order to {instr}.
-    
+
     Each step in the plan can be selected from the available skills below:
 
     *movement direction:
@@ -230,38 +228,38 @@ def query_sweep(obs, instr):
         *down. This skill moves the robot gripper downward to the table surface.
         *clockwise. This skill rotates the robot gripper away from the camera by a small degree.
         *counterclockwise. This skill rotates the robot gripper towards the camera by a small degree.
-    
+
     *rotate the gripper:
-        *tilt. This skill moves the 
+        *tilt. This skill moves the
 
     *gripper movement:
         *close the gripper. This skill controls the robot gripper to close to grasp an object.
         *open the gripper. This skill controls the robot gripper to open and release the object in hand.
 
-    You may choose between using one of movement direction or gripper movement. 
+    You may choose between using one of movement direction or gripper movement.
     If you were to choose to use movement direction, you may use up to two directions and include a target object, and you should format it like this:
     \"Move the gripper x and y towards z\", where x and y are directions and z is the target object. You also must start your command with \"Move the gripper\"
     X should be more important than y in terms of direction. If the second direction and the target object are not necessary, you should discard it, but make sure to include at least one direction in your command.
     Once the robot is holding the object in which to sweep with, you must also order the gripper to go down as a secondary command to prevent the gripper is too high above the table.
-    
+
     Since this instruction is a sweeping task, you need to think about the object in which you use to sweep: if it has a handle, you must identify where the handle of the object is and tell the robot to reach for that spot.
 
     If you were to choose to use gripper movement, you should format the command as \"close the gripper\" or \"open the gripper\", where x is the target object.
     If you think the gripper is close to the target object, then you must choose to use gripper movement to grasp the target object to maintain efficiency.
 
-    Pay close attention to these factors: 
+    Pay close attention to these factors:
     *Where in the object do you want to grasp. Since this is a sweeping task, you should locate and grasp the handle of the object instead of anywhere on the object.
     *Height of the gripper. You should keep the gripper as close to the table as possible.
-    *Whether the gripper is closed. 
+    *Whether the gripper is closed.
     *Whether the gripper is holding the target object.
-    
+
     Especially pay attention to the actual direction between the gripper and the target object. Reference the color bands on the edge of the image and make logical decisions. The robot's direction is the same as the camera's direction also.
 
     The relevant objects have been segmented and annotated, with the name being shown and each unique object has a different color.
-    
+
     Think this through step by step. However, you should return only the subgoals as a python list, without any other additional comments.
     """
-    return query2(obs, x)
+    return query1(obs, x)
 
 
 def query_w_bbox_midway(obs, instr, lst_instr, prev_instr):
@@ -287,7 +285,7 @@ def query_w_bbox_midway(obs, instr, lst_instr, prev_instr):
         *close the gripper. This skill controls the robot gripper to close to grasp an object.
         *open the gripper. This skill controls the robot gripper to open and release the object in hand.
 
-    You may choose between using one of movement direction and gripper movement. 
+    You may choose between using one of movement direction and gripper movement.
     If you were to choose to use movement direction, you may use up to two directions and include a target object, and you should format it like this:
     \"Move the gripper x and y towards z\", where x and y are directions and z is the target object. You also must start your command with \"Move the gripper\"
     X should be more important than y in terms of direction. If the second direction and the target object are not necessary, you should discard it, but make sure to include at least one direction in your command.
@@ -301,7 +299,7 @@ def query_w_bbox_midway(obs, instr, lst_instr, prev_instr):
 
     Return only the subgoals as a python list, without any other additional comments.
     """
-    return query2(new_im_b64, prompt), new_im_b64
+    return query1(new_im_b64, prompt), new_im_b64
 
 def query_wo_bbox(obs, instr, lst_instr=None):
     new_im_b64 = encode_image(obs)
@@ -325,27 +323,27 @@ def query_wo_bbox(obs, instr, lst_instr=None):
         *close the gripper. This skill controls the robot gripper to close to grasp an object.
         *open the gripper. This skill controls the robot gripper to open and release the object in hand.
 
-    You may choose between using one of movement direction or gripper movement. 
+    You may choose between using one of movement direction or gripper movement.
     If you were to choose to use movement direction, you may use one or two directions and include a target object, and you should format it like this:
-    \"move the gripper x towards z\" or \"move the gripper x and y towards z\" where x and y are the directions and z is the target object. You also must start your command with \"move the gripper\". 
+    \"move the gripper x towards z\" or \"move the gripper x and y towards z\" where x and y are the directions and z is the target object. You also must start your command with \"move the gripper\".
     Therefore, instead of saying something like \"left\" or \"up\", you should phrase it like \"move the gripper left\" and \"move the gripper up\"
     Make sure to include at least one direction in your command.
 
-    If you were to choose to use gripper movement, you should format the command as \"close the gripper to pick up x\" or \"open the gripper to release x\", where x is the target object. 
+    If you were to choose to use gripper movement, you should format the command as \"close the gripper to pick up x\" or \"open the gripper to release x\", where x is the target object.
     If you think the gripper is very close to the target object, then you must choose to use gripper movement to grasp the target object to maintain efficiency.
-    If the task is related to sweeping, after you close the gripper, do not move up until after you have released the gripper. 
+    If the task is related to sweeping, after you close the gripper, do not move up until after you have released the gripper.
 
-    Pay close attention to these factors: 
+    Pay close attention to these factors:
     *Which task are you doing.
-    *Whether the gripper is closed. 
+    *Whether the gripper is closed.
     *Whether the gripper is holding the target object.
     *How far the two target objects are. If they are across the table, then duplicate the commands with a copy of it.
-    
+
     Especially pay attention to the actual direction between the gripper and the target object. Remember that the robot's angle is roughly the same as the camera's angle. If the target object is closer to the edge of the table that is near the top of the image, you should move forward, otherwise you should move backward.
-    
+
     Start by looking at what objects are in the image, and then plan with the direction of the objects in mind. You should return only the subgoals as a python list, without any other additional comments.
     """
-    return query2(new_im_b64, prompt), new_im_b64
+    return query1(new_im_b64, prompt), new_im_b64
 
 def sample_from_queries(lst_of_responses):
     """
@@ -378,31 +376,31 @@ def query_long_horizon(obs, instrs):
         *close the gripper. This skill controls the robot gripper to close to grasp an object.
         *open the gripper. This skill controls the robot gripper to open and release the object in hand.
 
-    You may choose between using one of movement direction or gripper movement. 
+    You may choose between using one of movement direction or gripper movement.
     If you were to choose to use movement direction, you may use one or two directions and include a target object, and you should format it like this:
-    \"move the gripper x towards z\" or \"move the gripper x and y towards z\" where x and y are the directions and z is the target object. 
+    \"move the gripper x towards z\" or \"move the gripper x and y towards z\" where x and y are the directions and z is the target object.
     You also must start your command with \"move the gripper\". Therefore, instead of saying something like \"down\" or \"up\", you should phrase it like \"move the gripper down\" and \"move the gripper up\". Make sure to include at least one direction in your command since otherwise this command format won't make sense.
 
-    If you were to choose to use gripper movement, you should format the command as \"close the gripper to pick up x\" or \"open the gripper to release x\", where x is the target object. 
+    If you were to choose to use gripper movement, you should format the command as \"close the gripper to pick up x\" or \"open the gripper to release x\", where x is the target object.
     You may discard the target object if necessary. In that case use \"close the gripper\" or \"open the gripper\".
     If you think the gripper is close to the target object, then you must choose to use gripper movement to grasp the target object to maintain efficiency.
-    If the task is related to sweeping, after you close the gripper, do not move up until after you have released the gripper. 
+    If the task is related to sweeping, after you close the gripper, do not move up until after you have released the gripper.
 
-    Pay close attention to these factors: 
-    *Which task are you doing. 
-    *Whether the gripper is closed. 
+    Pay close attention to these factors:
+    *Which task are you doing.
+    *Whether the gripper is closed.
     *Whether the gripper is holding the target object.
     *How far the two target objects are. If they are across the table, then duplicate the commands with a copy of it.
     *Where the gripper is. After the end of each subtask, it is reasonable to assume that the gripper will not be at where it originally was in the image, but somewhere close to the last target object.
-    
-    Especially pay attention to the actual direction between the gripper and the target object. Remember that the robot's angle is roughly the same as the camera's angle. 
+
+    Especially pay attention to the actual direction between the gripper and the target object. Remember that the robot's angle is roughly the same as the camera's angle.
     If the target object is closer to the edge of the table that is near the top of the image, you should move forward, otherwise you should move backward.
 
-    Start by looking at what objects are in the image, and then plan with the direction of the objects in mind. The tasks should be completed sequentially, therefore you need to consider the position of the gripper after each task before planning the next task. 
+    Start by looking at what objects are in the image, and then plan with the direction of the objects in mind. The tasks should be completed sequentially, therefore you need to consider the position of the gripper after each task before planning the next task.
     You should return a json dictionary in which each key is the subtask to perform, and each value is the list of skills to perform in order to complete the subtask.
     """
 
-    return query2(obs, prompt)
+    return query1(obs, prompt)
 
 def make_multiple_response(im, instr, num_res):
     res = []
@@ -416,7 +414,7 @@ def sample_wrapper(im, instr, instr_lst):
     return sample_from_queries(res)
 
 def proc_im_color(im: np.ndarray):
-    
+
     h, w, d = im.shape
     im_new = np.zeros((h+40, w+40, d), dtype=np.uint8)
     im_new[20:-20,20:-20,:]=im
@@ -432,33 +430,33 @@ if __name__ == "__main__":
     res = make_multiple_response(im, instr, 10)
     plans_lst = process_candidates(res)
     print(plans_lst)
-    
-    
-    
-    
 
-    
-    
 
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <<<<<<< HEAD
-    
-    
-=======
-    
-    
 
-    
+
+=======
+
+
+
+
 
     im_dim = "/mount/harddrive/robonetv2/bridge_data_v2/few_shot_instr/clear_center/2024-05-17_20-08-42/raw/traj_group0/traj0/images0/im_0.jpg"
     im = encode_image(im_dim)

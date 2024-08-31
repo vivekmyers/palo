@@ -10,6 +10,7 @@ import wandb
 from traj_relabel import caption_relabel
 from collections import defaultdict
 
+
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string("input_path", None, "Input path", required=True)
@@ -21,17 +22,13 @@ flags.DEFINE_integer(
 )
 flags.DEFINE_bool("overwrite", True, "Overwrite existing files")
 flags.DEFINE_integer("num_workers", 50, "Number of threads to use")
-flags.DEFINE_string(
-    "model_ckpt", None, "Path to model checkpoint for writing embeddings"
-)
+flags.DEFINE_string("model_ckpt", None, "Path to model checkpoint for writing embeddings")
 
 logging.set_verbosity(logging.ERROR)
 
 
 def tensor_feature(value):
-    return tf.train.Feature(
-        bytes_list=tf.train.BytesList(value=[tf.io.serialize_tensor(value).numpy()])
-    )
+    return tf.train.Feature(bytes_list=tf.train.BytesList(value=[tf.io.serialize_tensor(value).numpy()]))
 
 
 def process(path):
@@ -54,22 +51,21 @@ def process(path):
                     pass
             else:
                 logging.info(f"Skipping {outpath}")
-                return path, 'skip', info
+                return path, "skip", info
 
         if len(arr) == 0:
             logging.info(f"Skipping {path}, empty")
-            return path, 'empty', info
+            return path, "empty", info
 
         tf.io.gfile.makedirs(os.path.dirname(outpath))
 
-        
         def clean_lang(lang):
             if lang is None:
                 lang = ""
             lang = lang.strip()
             lines = lang.split("\n")
             lines = [l for l in lines if not "confidence" in l]
-            
+
             return "\n".join(lines)
 
         with tf.io.TFRecordWriter(outpath) as writer:
@@ -82,7 +78,7 @@ def process(path):
                     if text is None:
                         text = "placeholder"
                     else:
-                        text = text.split("\n")[0]  
+                        text = text.split("\n")[0]
 
                     s0 = traj["observations"][0]["images0"]
                     g = traj["observations"][-1]["images0"]
@@ -93,26 +89,6 @@ def process(path):
                     text_batch.append(text)
                     img_batch.append(img)
 
-
-                    
-
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                        
-                    
-                    
-
-                    
-
-                    
-
-
                 text_batch = process_text(text_batch)
                 img_batch = np.concatenate(img_batch, axis=0)
                 clip_output = clip(pixel_values=img_batch, **text_batch)
@@ -122,39 +98,24 @@ def process(path):
             for i, traj in enumerate(arr):
                 if FLAGS.model_ckpt:
                     traj_text_embed = text_embeds[i : i + 1]
-                    traj_text_embed = np.repeat(
-                        traj_text_embed, len(traj["actions"]), axis=0
-                    )
-
+                    traj_text_embed = np.repeat(traj_text_embed, len(traj["actions"]), axis=0)
 
                     traj_image_embed = image_embeds[i : i + 1]
-                    traj_image_embed = np.repeat(
-                        traj_image_embed, len(traj["actions"]), axis=0
-                    )
+                    traj_image_embed = np.repeat(traj_image_embed, len(traj["actions"]), axis=0)
                 low_level_lang = caption_relabel(traj, path)
 
                 for lang in low_level_lang:
-                    info['low_level/' + lang] += 1
+                    info["low_level/" + lang] += 1
 
-                info['lang/' + traj["language"][0]] += 1
+                info["lang/" + traj["language"][0]] += 1
 
                 assert len(low_level_lang) == len(traj["actions"])
                 with lock:
                     encoded_language = tensor_feature(
-                        np.array(
-                            [
-                                lang_encode(clean_lang(x) if x else None)
-                                for x in traj["language"]
-                            ]
-                        )
+                        np.array([lang_encode(clean_lang(x) if x else None) for x in traj["language"]])
                     )
                     encoded_low_level_lang = tensor_feature(
-                        np.array(
-                            [
-                                lang_encode(clean_lang(x) if x else None)
-                                for x in low_level_lang
-                            ]
-                        )
+                        np.array([lang_encode(clean_lang(x) if x else None) for x in low_level_lang])
                     )
                     assert len(traj["language"]) == len(low_level_lang)
                 truncates = np.zeros(len(traj["actions"]), dtype=np.bool_)
@@ -185,14 +146,12 @@ def process(path):
                         )
                     ),
                     "actions": tensor_feature(np.array(traj["actions"], dtype=np.float32)),
-                    "terminals": tensor_feature(
-                        np.zeros(len(traj["actions"]), dtype=np.bool_)
-                    ),
+                    "terminals": tensor_feature(np.zeros(len(traj["actions"]), dtype=np.bool_)),
                     "truncates": tensor_feature(truncates),
                     "language": encoded_language,
-                    "language_low_level": encoded_low_level_lang
+                    "language_low_level": encoded_low_level_lang,
                 }
-                
+
                 if FLAGS.model_ckpt:
                     feature["text_embed"] = tensor_feature(traj_text_embed)
                     feature["image_embed"] = tensor_feature(traj_image_embed)
@@ -201,7 +160,6 @@ def process(path):
     except Exception as e:
         return (path, e, info)
     return (path, None, info)
-
 
 
 def main(_):
@@ -219,13 +177,9 @@ def main(_):
     lock = manager.Lock()
     flush_mapping(FLAGS.output_path)
     load_mapping(FLAGS.output_path, manager.dict)
-    paths = tf.io.gfile.glob(
-        tf.io.gfile.join(FLAGS.input_path, *(["*?"] * (FLAGS.depth - 1)))
-    )
+    paths = tf.io.gfile.glob(tf.io.gfile.join(FLAGS.input_path, *(["*?"] * (FLAGS.depth - 1))))
     code_path = tf.io.gfile.join(FLAGS.output_path, "language_encodings.json")
-    paths = [os.path.join(p, "train/out.npy") for p in paths] + [
-        os.path.join(p, "val/out.npy") for p in paths
-    ]
+    paths = [os.path.join(p, "train/out.npy") for p in paths] + [os.path.join(p, "val/out.npy") for p in paths]
     error_paths = []
     infos = defaultdict(int)
 
@@ -244,12 +198,9 @@ def main(_):
             wandb.log({"num_errors": len(error_paths)}, step=i)
             wandb.log({"progress": i / len(paths)}, step=i)
 
-
     flush_mapping(FLAGS.output_path)
     print(error_paths)
-    with tf.io.gfile.GFile(
-        os.path.join(FLAGS.output_path, "error_paths.txt"), "w"
-    ) as f:
+    with tf.io.gfile.GFile(os.path.join(FLAGS.output_path, "error_paths.txt"), "w") as f:
         f.write("\n".join(error_paths))
 
 

@@ -31,7 +31,7 @@ from jaxrl_m.vision.clip import (
 )
 
 try:
-    from jax_smi import initialise_tracking  
+    from jax_smi import initialise_tracking
 
     initialise_tracking()
 except ImportError:
@@ -57,6 +57,7 @@ config_flags.DEFINE_config_file(
     lock_config=False,
 )
 
+
 def recursive_concat(batch1, batch2):
     if isinstance(batch1, dict) or isinstance(batch1, FrozenDict):
         ret = {}
@@ -64,19 +65,18 @@ def recursive_concat(batch1, batch2):
             if k == "inter_dataset_mask":
                 A = batch1[k].shape[0]
                 B = batch2[k].shape[0]
-                
-                
-                
+
                 mask = jnp.zeros((A + B, A + B))
                 ret[k] = mask
             else:
                 ret[k] = recursive_concat(batch1[k], batch2[k])
         return ret
-        
+
     elif isinstance(batch1, list):
         return [recursive_concat(b1, b2) for b1, b2 in zip(batch1, batch2)]
     else:
         return jnp.concatenate([batch1, batch2], axis=0)
+
 
 def recursive_concat2(batch1, batch2):
     if isinstance(batch1, dict) or isinstance(batch1, FrozenDict):
@@ -85,19 +85,18 @@ def recursive_concat2(batch1, batch2):
             if k == "inter_dataset_mask":
                 A = batch1[k].shape[0]
                 B = batch2[k].shape[0]
-                
-                
-                
+
                 mask = jnp.zeros((A + B, A + B))
                 ret[k] = mask
             else:
                 ret[k] = recursive_concat(batch1[k], batch2[k])
         return ret
-        
+
     elif isinstance(batch1, list):
         return [recursive_concat(b1, b2) for b1, b2 in zip(batch1, batch2)]
     else:
         return jnp.concatenate([batch1, batch2], axis=1)
+
 
 def main(_):
     devices = jax.local_devices()
@@ -105,10 +104,6 @@ def main(_):
     assert FLAGS.config.batch_size % num_devices == 0
     print(FLAGS.config)
 
-    
-    
-
-    
     wandb_config = WandBLogger.get_default_config()
     wandb_config.update(
         {
@@ -131,7 +126,6 @@ def main(_):
 
     load_mapping(FLAGS.config.data_path, augmented=FLAGS.config.augment_language)
 
-    
     train_data_iters = {}
     val_datasets = {}
 
@@ -206,8 +200,7 @@ def main(_):
         lang_ids = lang_ids[: FLAGS.config.num_annotations]
 
     if FLAGS.config.domain_weight is not None:
-        
-        
+
         sample_weights = [(1 - FLAGS.config.domain_weight) / len(train_paths)] * len(
             train_paths
         ) + [FLAGS.config.domain_weight]
@@ -259,13 +252,12 @@ def main(_):
     )
     val_datasets["bridgedata_val_scene"] = val_scene_data
 
-    
     if FLAGS.finetune_val_scene:
         FLAGS.config.eval_interval = 100
         FLAGS.config.save_interval = 100
 
     if FLAGS.config.ss2_batch_size > 0:
-        
+
         load_ss2_mapping(FLAGS.config.ss2_labels_path)
 
         train_data = SS2Dataset(
@@ -289,8 +281,7 @@ def main(_):
     def process_batch(batch, data_split):
         if not type(batch) == FrozenDict:
             batch = FrozenDict(batch)
-        
-        
+
         lang_ids = batch["goals"]["language"]
         lang_ids_low_lvl = batch["language_low_level"]
         lang_mask = jnp.array(lang_ids >= 0)
@@ -299,7 +290,8 @@ def main(_):
                 lang_decode(x, aug=FLAGS.config.augment_language) for x in lang_ids
             ]
             sents_low_lvl = [
-                lang_decode(x, aug=FLAGS.config.augment_language) for x in lang_ids_low_lvl
+                lang_decode(x, aug=FLAGS.config.augment_language)
+                for x in lang_ids_low_lvl
             ]
         elif "ss2" in data_split:
             sents = [lang_decode_ss2(x) for x in lang_ids]
@@ -318,7 +310,7 @@ def main(_):
                 lang_inputs = jnp.array([multi_embed(x) for x in sents])
                 lang_inputs_low_lvl = jnp.array([multi_embed(x) for x in sents_low_lvl])
         else:
-            
+
             lang_inputs = jnp.ones((len(sents), 64))
             lang_inputs_low_lvl = jnp.ones((len(sents), 64))
 
@@ -335,13 +327,12 @@ def main(_):
             goal_img = batch["goals"]["image"]
             init_img = batch["initial_obs"]["image"]
 
-        
         processed_batch = {
             "observations": {"image": obs_img},
             "goals": {
                 "image": goal_img,
                 "language": lang_inputs,
-                "language_low_level": lang_inputs_low_lvl, 
+                "language_low_level": lang_inputs_low_lvl,
                 "language_joint": recursive_concat2(lang_inputs, lang_inputs_low_lvl),
                 "language_mask": lang_mask,
                 "language_low_level": lang_mask_low_lvl,
@@ -363,7 +354,7 @@ def main(_):
                 processed_batch["goals"]["image_embed"] = batch["image_embed"]
         if "text_embed" in batch:
             if FLAGS.config.use_text_embeds_as_inputs:
-                
+
                 processed_batch["goals"]["language"] = batch["text_embed"]
             elif FLAGS.config.use_text_embeddings:
                 processed_batch["goals"]["text_embed"] = batch["text_embed"]
@@ -415,14 +406,10 @@ def main(_):
     logging.info(
         f"Batch size per device: {example_batch['observations']['image'].shape[0] // num_devices}"
     )
-    
-    
 
-    
     sharding = jax.sharding.PositionalSharding(devices)
     example_batch = shard_batch(example_batch, sharding)
 
-    
     encoder_def = encoders[FLAGS.config.encoder](**FLAGS.config.encoder_kwargs)
     task_encoder_defs = {
         mod: encoders[arch](**FLAGS.config.task_encoder_kwargs[mod])
@@ -430,12 +417,11 @@ def main(_):
     }
 
     if "drop_encoders" in FLAGS.config and FLAGS.config.drop_encoders:
-        
+
         task_encoder_defs = {
             mod: lambda x: x for mod in FLAGS.config.task_encoders.keys()
         }
 
-    
     pretrained_params = {}
     if "clip" in FLAGS.config.task_encoders.get(
         "image", {}
@@ -447,14 +433,11 @@ def main(_):
             )
 
         for module_key in clip_module_vars:
-            
+
             if module_key == "temperature":
                 continue
             pretrained_params["clip_" + module_key] = clip_module_vars[module_key]
-        
-        
 
-    
     rng = jax.random.PRNGKey(FLAGS.config.seed)
     rng, construct_rng = jax.random.split(rng)
     agent = agents[FLAGS.config.agent].create(
@@ -470,13 +453,11 @@ def main(_):
     )
     if FLAGS.config.resume_path is not None:
         agent = checkpoints.restore_checkpoint(FLAGS.config.resume_path, target=agent)
-    
-    
+
     agent = jax.device_put(jax.tree_map(jnp.array, agent), sharding.replicate())
 
     timer = Timer()
     for i in tqdm.tqdm(range(int(FLAGS.config.num_steps))):
-        
 
         timer.tick("dataset")
         batch = shard_batch(next(train_data_iter), sharding)
@@ -516,7 +497,6 @@ def main(_):
             )
             logging.info("Saved checkpoint to %s", checkpoint_path)
 
-        
 
 if __name__ == "__main__":
     app.run(main)

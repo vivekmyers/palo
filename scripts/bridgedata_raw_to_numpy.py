@@ -14,10 +14,10 @@ import random
 from multiprocessing import Pool
 from traj_relabel import *
 import logging
-import openai
 import wandb
 
-logging.getLogger('openai').setLevel(logging.ERROR)
+
+logging.getLogger("openai").setLevel(logging.ERROR)
 httpx_logger = logging.getLogger("httpx")
 httpx_logger.setLevel(logging.WARNING)
 
@@ -32,29 +32,23 @@ flags.DEFINE_integer(
     "{input_path}/dir_1/dir_2/.../dir_{depth-1}/2022-01-01_00-00-00/...",
 )
 flags.DEFINE_bool("overwrite", False, "Overwrite existing files")
-flags.DEFINE_float(
-    "train_proportion", 0.9, "Proportion of data to use for training (rather than val)"
-)
+flags.DEFINE_float("train_proportion", 0.9, "Proportion of data to use for training (rather than val)")
 flags.DEFINE_integer("num_workers", 15, "Number of threads to use")
 
 
-def squash(path):  
+def squash(path):
     im = Image.open(path)
     im = im.resize((224, 224), Image.LANCZOS)
     out = np.asarray(im).astype(np.uint8)
     return out
 
 
-def process_images(path):  
+def process_images(path):
     names = sorted(
         [x for x in os.listdir(path) if "images" in x and not "depth" in x],
         key=lambda x: int(x.split("images")[1]),
     )
-    image_path = [
-        os.path.join(path, x)
-        for x in os.listdir(path)
-        if "images" in x and not "depth" in x
-    ]
+    image_path = [os.path.join(path, x) for x in os.listdir(path) if "images" in x and not "depth" in x]
     image_path = sorted(image_path, key=lambda x: int(x.split("images")[1]))
 
     images_out = defaultdict(list)
@@ -89,7 +83,7 @@ def process_time(path):
     return x["time_stamp"][:-1], x["time_stamp"][1:]
 
 
-def process_actions(path):  
+def process_actions(path):
     fp = os.path.join(path, "policy_out.pkl")
     with open(fp, "rb") as f:
         act_list = pickle.load(f)
@@ -98,10 +92,8 @@ def process_actions(path):
     return act_list
 
 
-
-
 def process_dc(path, train_ratio=0.9):
-    
+
     if "lmdb" in path:
         logging.warning(f"Skipping {path} because uhhhh lmdb?")
         return [], [], [], [], {}
@@ -111,7 +103,6 @@ def process_dc(path, train_ratio=0.9):
     all_rews_train = list()
     all_rews_test = list()
 
-    
     date_time = datetime.strptime(path.split("/")[-1], "%Y-%m-%d_%H-%M-%S")
     latency_shift = date_time < datetime(2021, 7, 23)
 
@@ -134,7 +125,6 @@ def process_dc(path, train_ratio=0.9):
                 if lines:
                     tasks = [line.strip() for line in lines]
 
-                
         elif "bridge_data_v1" in path:
             tasks = [path.split("/")[-2].replace("_", " ")]
 
@@ -144,7 +134,6 @@ def process_dc(path, train_ratio=0.9):
 
                 assert "obs_dict.pkl" in ld, tp + ":" + str(ld)
                 assert "policy_out.pkl" in ld, tp + ":" + str(ld)
-                
 
                 obs, next_obs = process_images(tp)
                 acts = process_actions(tp)
@@ -160,13 +149,9 @@ def process_dc(path, train_ratio=0.9):
                 out["next_observations"]["state"] = next_state
                 out["next_observations"]["time_stamp"] = next_time_stamp
 
-                out["observations"] = [
-                    dict(zip(out["observations"], t))
-                    for t in zip(*out["observations"].values())
-                ]
+                out["observations"] = [dict(zip(out["observations"], t)) for t in zip(*out["observations"].values())]
                 out["next_observations"] = [
-                    dict(zip(out["next_observations"], t))
-                    for t in zip(*out["next_observations"].values())
+                    dict(zip(out["next_observations"], t)) for t in zip(*out["next_observations"].values())
                 ]
 
                 out["actions"] = acts
@@ -189,10 +174,6 @@ def process_dc(path, train_ratio=0.9):
                 assert len(out["terminals"]) == traj_len
                 assert len(labeled_rew) == traj_len
 
-                
-                
-
-                
                 low_lvl_instr = caption_relabel(out, tp)
 
                 info = {}
@@ -220,9 +201,7 @@ def process_dc(path, train_ratio=0.9):
 def make_numpy(x, train_proportion):
     itr, path = x
     dirname = os.path.abspath(path)
-    outpath = os.path.join(
-        FLAGS.output_path, *dirname.split(os.sep)[-(FLAGS.depth - 1) :]
-    )
+    outpath = os.path.join(FLAGS.output_path, *dirname.split(os.sep)[-(FLAGS.depth - 1) :])
     outpath_train = tf.io.gfile.join(outpath, "train")
     outpath_val = tf.io.gfile.join(outpath, "val")
     wandb.log({"path": outpath}, step=itr)
@@ -262,27 +241,18 @@ def make_numpy(x, train_proportion):
 
     with tf.io.gfile.GFile(tf.io.gfile.join(outpath_train, "out.npy"), "wb") as f:
         np.save(f, lst_train)
-        
+
     with tf.io.gfile.GFile(tf.io.gfile.join(outpath_val, "out.npy"), "wb") as f:
         np.save(f, lst_val)
-        
 
     return results
-    
-    
-
-    
-    
-    
 
 
 def main(_):
     assert FLAGS.depth >= 1
 
     wandb.init(project="bridgedata_raw_to_numpy")
-    
 
-    
     paths = glob.glob(os.path.join(FLAGS.input_path, *("*" * (FLAGS.depth - 1))))
 
     worker_fn = partial(make_numpy, train_proportion=FLAGS.train_proportion)
@@ -296,7 +266,6 @@ def main(_):
             for key, val in info.items():
                 results[key] = results.get(key, 0) + val
             wandb.log(results)
-
 
 
 if __name__ == "__main__":

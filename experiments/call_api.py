@@ -25,36 +25,39 @@ bad_examples = """
 move the gripper down towards the mushroom
 open the gripper
 """
+
+
 def encode_image(im):
-    
+
     if isinstance(im, np.ndarray):
         im = Image.fromarray(im)
         buf = io.BytesIO()
-        im.save(buf, format='JPEG')
-        return base64.b64encode(buf.getvalue()).decode('utf-8')
+        im.save(buf, format="JPEG")
+        return base64.b64encode(buf.getvalue()).decode("utf-8")
     elif isinstance(im, str):
         with open(im, "rb") as image_file:
-            return base64.b64encode(image_file.read()).decode('utf-8')
+            return base64.b64encode(image_file.read()).decode("utf-8")
 
     else:
         raise TypeError("Image should be either a filename string or a np array")
-    
-    
+
+
 def query2(im, x):
     messages = [
         {
             "role": "system",
-            "content": "You are a planner who specializes in motion planning for robots."
+            "content": "You are a planner who specializes in motion planning for robots.",
         },
         {
             "role": "user",
             "content": [
-                {"type": "image_url",
-                 "image_url": {"url": f"data:image/jpeg:base64,{im}"}},
-                {"type": "text",
-                 "text": x}
-            ]
-        }
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/jpeg:base64,{im}"},
+                },
+                {"type": "text", "text": x},
+            ],
+        },
     ]
 
     params = {
@@ -64,11 +67,9 @@ def query2(im, x):
         "temperature": 0.2,
     }
     result = client.chat.completions.create(**params)
-    
-    
-    
 
-    return result.choices[0].message.content 
+    return result.choices[0].message.content
+
 
 def process_candidates(candidates: list[str]):
     candidates_json = []
@@ -90,6 +91,7 @@ def process_candidates(candidates: list[str]):
         results_all_ll.append(result_ll)
     return candidates_json, [results_all_hl, results_all_ll]
 
+
 def make_plan(obs, big_instr):
     cx = f"""
     Here is an image observed by a robot in a robot manipulation task. The task is to {big_instr}. Now give me the steps in which the robot must take in order to accomplish this task. 
@@ -98,6 +100,7 @@ def make_plan(obs, big_instr):
     """
     return query2(obs, cx)
 
+
 def sample_from_queries(lst_of_responses):
     """
     The general gist of sampling:
@@ -105,14 +108,15 @@ def sample_from_queries(lst_of_responses):
     We then normalize it
     """
     num_responses = len(lst_of_responses)
-    p_base = np.array([(1/2) ** i for i in range(num_responses)])
-    p_base = p_base/np.sum(p_base)
+    p_base = np.array([(1 / 2) ** i for i in range(num_responses)])
+    p_base = p_base / np.sum(p_base)
 
     return lst_of_responses[np.random.choice(num_responses, p=p_base)]
 
+
 def query_long_horizon(obs, instrs):
     obs = encode_image(obs)
-    prompt=f"""
+    prompt = f"""
     Here is an image observed by the robot in a robot manipulation environment. The gripper is at the top left corner in the image.
     Now plan for the the list of subtasks and skills the robot needs to perform in order to {instrs}. 
     A subtask is one set of actions connected in a logical manner. For example, \"put an object to some place\", \"Sweep some objects to the right\", and \"Open the drawer\" are valid subtasks.
@@ -161,22 +165,25 @@ def query_long_horizon(obs, instrs):
     """
     return query2(obs, prompt)
 
+
 def make_multiple_response(im, instr, num_res):
     res = []
     for _ in range(num_res):
-        res.append(query_long_horizon(im,instr))
+        res.append(query_long_horizon(im, instr))
 
     return res
 
+
 def proc_im_color(im: np.ndarray):
-    
+
     h, w, d = im.shape
-    im_new = np.zeros((h+40, w+40, d), dtype=np.uint8)
-    im_new[20:-20,20:-20,:]=im
-    im_new[:,:20,1] = 255
-    im_new[:,-20:,0] = 255
-    im_new[:20,:,2]=255
+    im_new = np.zeros((h + 40, w + 40, d), dtype=np.uint8)
+    im_new[20:-20, 20:-20, :] = im
+    im_new[:, :20, 1] = 255
+    im_new[:, -20:, 0] = 255
+    im_new[:20, :, 2] = 255
     return im_new
+
 
 if __name__ == "__main__":
     im_dim = "./data/traj0/images0/im_0.jpg"
@@ -184,5 +191,3 @@ if __name__ == "__main__":
     res = make_multiple_response(im_dim, instr, 10)
     for i in res:
         print(i)
-    
-    

@@ -1,5 +1,6 @@
 import ml_collections
 
+
 def get_config(config_string):
     possible_structures = {
         "gc_iql": ml_collections.ConfigDict(
