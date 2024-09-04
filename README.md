@@ -2,7 +2,7 @@
 
 Code for the paper [Policy Adaptation via Language Optimization: Decomposing Tasks for Few-Shot Imitation](https://arxiv.org/abs/2408.16228).
 
-## Environment
+### Environment
 ```
 conda create -n jaxrl python=3.10
 conda activate jaxrl
