@@ -1,14 +1,11 @@
 from absl import app, flags, logging
 import os
 import pickle
-import time
 import tqdm
 from functools import partial
-import yaml
 
 import numpy as np
 import cv2
-import wandb
 from PIL import Image
 import jax
 import jax.numpy as jnp
@@ -21,42 +18,23 @@ from jaxrl_m.agents import agents
 from jaxrl_m.data.bridge_dataset import multi_embed
 from jaxrl_m.data.language import load_mapping
 from jaxrl_m.common.common import shard_batch
-import experiments.call_api as call_api
+import palo.query_vlm as query_vlm
 import json
 
 np.set_printoptions(suppress=True)
-
 logging.set_verbosity(logging.WARNING)
 
-FLAGS = flags.FLAGS
-flags.DEFINE_string("instruction", None, "High-level task instruction", required=True)
-flags.DEFINE_string(
-    "trajectory_path",
-    None,
-    "Trajectories collected",
-)
 
-flags.DEFINE_string("checkpoint_path", None, "Checkpoint of the agent", required=True)
-# flags.DEFINE_string("wandb_run_name", None, "Name of wandb run", required=True) we can't use this for public, use config instead
-flags.DEFINE_string("config_dir", "./agent/config.pkl", "Directory of config")
-flags.DEFINE_integer("im_size", None, "Name of wandb run", required=True)
-flags.DEFINE_integer("max_subtask_steps", 18, "Maximum number of steps per subtask")
-flags.DEFINE_integer("min_subtask_steps", 2, "Minimum number of steps per subtask")
-flags.DEFINE_integer("max_episode_steps", 150, "Maximum number of steps in an episode")
-flags.DEFINE_integer("num_plan_samples", 3, "Number of plans to be sampled")
-flags.DEFINE_integer("num_segment_samples", 8000, "Number of segment samples")
-flags.DEFINE_string("img_dir", None, "Image prompt directory")
-flags.DEFINE_string("output", "best_plan.json", "Output file name")
-flags.DEFINE_bool("no_sample", False, "Whether to sample or not")
-
-def pad(arr, max_len=150):
-    return jnp.concatenate((arr, np.zeros((max_len - arr.shape[0], 7))), axis=0)
-
-def squash(im):
-    im = Image.fromarray(im)
-    im = im.resize((FLAGS.im_size, FLAGS.im_size), Image.LANCZOS)
+def squash(imarr, im_size):
+    im = Image.fromarray(imarr)
+    im = im.resize((im_size, im_size), Image.LANCZOS) # pylint: disable=no-member
     out = np.asarray(im).astype(np.uint8)
     return out
+
+
+def pad_actions(arr, max_len=150):
+    return jnp.concatenate((arr, np.zeros((max_len - arr.shape[0], 7))), axis=0)
+
 
 def process_actions(path):
     fp = tf.io.gfile.join(path, "policy_out.pkl")
@@ -67,33 +45,25 @@ def process_actions(path):
 
     return jnp.array(act_list)
 
+
 def process_state(path):
     fp = tf.io.gfile.join(path, "obs_dict.pkl")
     with tf.io.gfile.GFile(fp, "rb") as f:
         x = pickle.load(f)
-    return x["full_state"][:-1], x["full_state"][1:]
+    return x["full_state"][:-1] 
 
-def make_trajectories(path):
+
+def get_trajectories(path, im_size, max_episode_steps):
     trajs = [os.path.join(path, i) for i in os.listdir(path)]
-    states = [process_state(i)[0] for i in trajs]
-    actions = [pad(process_actions(i), FLAGS.max_episode_steps) for i in trajs]
+    states = [process_state(i) for i in trajs]
+    actions = [pad_actions(process_actions(i), max_episode_steps) for i in trajs]
     ims = [os.path.join(i, "images0") for i in trajs]
-    obs = [
-        [
-            squash(cv2.cvtColor(cv2.imread(os.path.join(p, f"im_{i}.jpg")), cv2.COLOR_BGR2RGB))
-            for i in range(len(os.listdir(p)) - 1)
-        ]
-        for p in ims
-    ]
+    paths = [[os.path.join(p, f"im_{i}.jpg") for i in range(len(os.listdir(p)) - 1)] for p in ims]
+    obs = [[squash(cv2.imread(path, cv2.COLOR_BGR2RGB), im_size) for path in p] for p in paths]
+    start = paths[0][0]
 
-    return states, jnp.array(actions), obs
+    return states, actions, obs, start
 
-@jax.jit
-def slice_subtask(subtask, start, end):
-    padding = jnp.zeros_like(subtask)
-    rolled = jnp.roll(subtask, -start, axis=0)
-    masked = jnp.where(jnp.arange(padding.shape[0])[:, None] < end - start, rolled, padding)
-    return masked
 
 @jax.jit
 def mask_subtask(subtask, start, end):
@@ -103,10 +73,12 @@ def mask_subtask(subtask, start, end):
     masked = jnp.where(mask, subtask, padding)
     return masked, mask
 
-@partial(jax.jit, static_argnames="plan_len")
-def sample_boundaries(action_len, actions_padded, plan_len, key):
+
+@partial(jax.jit, static_argnames=["plan_len", "fixed_bounds"])
+def sample_partition_boundaries(action_len, actions_padded, plan_len, key, fixed_bounds=False):
+    """Sample partition boundaries to be used with a decomposition (`u` in eq. (3) of the paper)."""
     key, subkey = jax.random.split(key)
-    if FLAGS.no_sample:
+    if fixed_bounds:
         bounds = (jnp.arange(1, plan_len) * action_len).astype(jnp.int32)
     else:
         bounds = jnp.sort(jax.random.randint(subkey, shape=[plan_len - 1], minval=0, maxval=action_len))
@@ -119,34 +91,9 @@ def sample_boundaries(action_len, actions_padded, plan_len, key):
     masks = jnp.stack(masks, axis=0)
     return subtasks, masks, bounds, sizes
 
-def slice_actions(unrolled_actions, sampled_boundaries):
-
-    all_predicted_actions = []
-
-    for sample_id, boundaries in enumerate(sampled_boundaries):
-        predicted_actions = np.zeros_like(unrolled_actions[0])
-
-        num_subtasks = len(boundaries) - 1
-        for subtask_id in range(num_subtasks):
-            start = boundaries[subtask_id]
-            end = boundaries[subtask_id + 1]
-            if subtask_id == num_subtasks - 1:
-                assert end == unrolled_actions.shape[1]
-            predicted_actions[start:end] = unrolled_actions[subtask_id][start:end]
-
-        all_predicted_actions.append(predicted_actions)
-
-    all_predicted_actions = np.stack(all_predicted_actions, axis=0)
-
-    return all_predicted_actions
-
-def unnormalize_action(action, mean, std):
-    return action * std + mean
 
 def process_batch(batch):
-    """
-    A hacky method from GRIF, see if we can improve it.
-    """
+    """Add attributes to batch for agent processing."""
     if not type(batch) == FrozenDict:
         batch = FrozenDict(batch)
     lang_ids = batch["goals"]["language"]
@@ -173,6 +120,7 @@ def process_batch(batch):
     add_or_replace["bc_mask"] = jnp.ones(batch["observations"]["image"].shape[0])
 
     return batch.copy(add_or_replace=add_or_replace)
+
 
 def initialize_agent(config, checkpoint_path):
     encoder_def = encoders[config["encoder"]](**config["encoder_kwargs"])
@@ -213,46 +161,44 @@ def initialize_agent(config, checkpoint_path):
     )
 
     checkpoint_local_path = os.path.join("/tmp/cache/", "/".join(checkpoint_path.split("/")[3:]))
-
-    # if not tf.io.gfile.exists(checkpoint_local_path):
-    #     tf.io.gfile.makedirs(checkpoint_local_path)
-    #     tf.io.gfile.copy(checkpoint_path, checkpoint_local_path)
-
     agent = checkpoints.restore_checkpoint(checkpoint_path, agent)
 
     return agent, rng
 
-def evaluate_plan(
+
+def compute_cost(
+    key,
+    sharding,
     policy,
     observations,
     states,
-    candidate_plan,
-    candidate_plan_high_level,
-    gt_actions,
-    action_mean,
-    action_std,
-    sharding,
-    key,
+    candidate_plan_low,
+    candidate_plan_high,
+    demo_actions,
+    num_partition_samples,
+    unnormalize,
+    fixed_bounds,
 ):
     best_total_cost = jnp.inf
     best_total_segment = None
-    num_samples_total = 1 if FLAGS.no_sample else FLAGS.num_segment_samples
+    num_samples_total = num_partition_samples
     chunk_sz = 2000
-    for chunk_idx in tqdm.tqdm(range(num_samples_total // chunk_sz), desc="sample segment"):
+    info = {"segments": [], "costs": []}
 
+    for chunk_idx in tqdm.tqdm(range(num_samples_total // chunk_sz), desc="sample segment"):
         initial_image_obs = [{"image": observations[i][0], "proprio": states[i][0]} for i in range(len(observations))]
         unrolled_actions = []
         for x in range(len(observations)):
             acts = []
-            for y in range(len(candidate_plan)):
+            for y in range(len(candidate_plan_low)):
                 im_obs = jnp.array(observations[x])
                 proprio = jnp.array(states[x])
                 obs = {
                     "image": shard_batch(im_obs, sharding.replicate()),
                     "proprio": shard_batch(proprio, sharding.replicate()),
                 }
-                lang_l = multi_embed(candidate_plan[y])
-                lang_h = multi_embed(candidate_plan_high_level[y])
+                lang_l = multi_embed(candidate_plan_low[y])
+                lang_h = multi_embed(candidate_plan_high[y])
                 lang = shard_batch(jnp.concatenate((lang_h, lang_l), axis=0), sharding.replicate())
                 goal_obs = {"language_mask": jnp.ones(1), "language": lang}
                 sample = lambda obs, rpg: policy.sample_actions(
@@ -261,14 +207,14 @@ def evaluate_plan(
                 key, subkey = jax.random.split(key)
                 rand = jax.random.split(subkey, im_obs.shape[0])
                 res = jax.vmap(sample, in_axes=({"image": 0, "proprio": 0}, 0), out_axes=0)(obs, rand)
-                res = jax.vmap(unnormalize_action, in_axes=(0, None, None), out_axes=0)(res, action_mean, action_std)
+                res = jax.vmap(unnormalize)(res)
                 acts.append(res)
             unrolled_actions.append(jnp.array(acts))
 
         action_lens = jnp.array([i.shape[1] for i in unrolled_actions])
-        plan_len = len(candidate_plan)
+        plan_len = len(candidate_plan_low)
 
-        unrolled_actions = jnp.stack([jax.vmap(pad)(i) for i in unrolled_actions], axis=0)
+        unrolled_actions = jnp.stack([jax.vmap(pad_actions)(i) for i in unrolled_actions], axis=0)
 
         key, next_key = jax.random.split(key)
 
@@ -276,7 +222,7 @@ def evaluate_plan(
         num_samples_inner = num_samples_inner or chunk_sz
         keys = jax.random.split(next_key, num_samples_inner)
         segmented_actions, segment_masks, bounds, sizes = jnp.vectorize(
-            lambda l, u, k: sample_boundaries(l, u, plan_len, k),
+            lambda l, u, k: sample_partition_boundaries(l, u, plan_len, k, fixed_bounds=fixed_bounds),
             signature="(),(k,i,j),(m)->(k,i,j),(k,i,j),(n),(k)",
         )(action_lens, unrolled_actions, keys[:, None])
 
@@ -285,7 +231,7 @@ def evaluate_plan(
         bounds = jnp.moveaxis(bounds, 2, 1)
         sizes = jnp.moveaxis(sizes, 2, 1)
 
-        costs = jnp.sum(jnp.square(gt_actions - segmented_actions) * segment_masks, axis=(-1, -2))
+        costs = jnp.sum(jnp.square(demo_actions - segmented_actions) * segment_masks, axis=(-1, -2))
         costs = jnp.nan_to_num(costs / sizes)
         costs = jnp.sum(costs, axis=(1, 2))
         best_cost = jnp.min(jnp.array(costs))
@@ -294,76 +240,110 @@ def evaluate_plan(
         if best_cost < best_total_cost:
             best_total_segment = best_segment
             best_total_cost = best_cost
-            print(best_total_cost)
 
-    return best_total_cost, best_total_segment
+        info["segments"].append(bounds)
+        info["costs"].append(costs)
 
-def evaluate_plans():
-    t = time.time()
+    info["segments"] = jnp.concatenate(info["segments"], axis=0)
+    info["costs"] = jnp.concatenate(info["costs"], axis=0)
+
+    return best_total_cost, best_total_segment, info
+
+
+def optimize_language(
+    key,
+    policy,
+    instruction,
+    trajectories,
+    unnormalize,
+    fixed_bounds=False,
+    num_partition_samples=8000,
+    num_language_samples=15,
+):
     devices = jax.local_devices()
 
     sharding = jax.sharding.PositionalSharding(devices)
-    states, actions, observations = make_trajectories(FLAGS.trajectory_path)
+    states, actions, observations, start = trajectories
 
-    # api = wandb.Api()
-    # print("wandb run name, ", FLAGS.wandb_run_name)
-    # run = api.run(FLAGS.wandb_run_name)
-    with open("./agent/config.pkl", "rb") as f:
-        config = pickle.load(f)
-    action_metadata = config["bridgedata_config"]["action_metadata"]
-    action_mean = jnp.array(action_metadata["mean"])
-    action_std = jnp.array(action_metadata["std"])
-
-    policy, key = initialize_agent(config, FLAGS.checkpoint_path)
     policy = jax.device_put(jax.tree_map(jnp.array, policy), sharding.replicate())
 
     best_segment_per_inst_set = []
-    plans_json = call_api.make_multiple_response(
-        FLAGS.img_dir,
-        "Put the purple thing in the drawer after opening it. You also don't have to close the drawer",
-        15,
-    )
-    for p in plans_json:
-        print(p)
-    candidates_json, (candidate_plans_high_level, candidate_plans) = call_api.process_candidates(plans_json)
+    decomp_tree = query_vlm.make_multiple_response(start, instruction, num_language_samples)
+    candidates_json, (decomp_high, decomp_low) = query_vlm.process_candidates(decomp_tree)
+    info = {}
 
-    candidate_plan_costs = np.zeros([len(candidate_plans)], dtype=float)
-    for plan_id, (candidate_plan, candidate_plan_high_level) in enumerate(
-        tqdm.tqdm(list(zip(candidate_plans, candidate_plans_high_level)), desc="sample plans")
+    candidate_plan_costs = np.zeros([len(decomp_low)], dtype=float)
+    for plan_id, (candidate_plan_low, candidate_plan_high) in enumerate(
+        tqdm.tqdm(list(zip(decomp_low, decomp_high)), desc="sample plans")
     ):
-        cost, best_segment = evaluate_plan(
+        cost, best_segment, info_ = compute_cost(
+            key,
+            sharding,
             policy,
             observations,
             states,
-            candidate_plan,
-            candidate_plan_high_level,
+            candidate_plan_low,
+            candidate_plan_high,
             actions,
-            action_mean,
-            action_std,
-            sharding,
-            key,
+            num_partition_samples,
+            unnormalize=unnormalize,
+            fixed_bounds=fixed_bounds,
         )
 
         candidate_plan_costs[plan_id] = cost
         best_segment_per_inst_set.append(best_segment)
+        info[(candidate_plan_low, candidate_plan_high)] = info_
 
     best_plan_id = np.argmin(candidate_plan_costs)
     best_plan = candidates_json[best_plan_id]
 
-    t_plus = time.time()
-    print("The costs per trajectory are: ", candidate_plan_costs)
-    print("Time consumption: ", t_plus - t, " seconds")
-    print("Best Plan: ")
-    print(best_plan)
-    print("Best Segment:")
-    print(best_segment_per_inst_set[best_plan_id])
-    return plans_json[best_plan_id], (candidate_plans_high_level[best_plan_id], candidate_plans[best_plan_id])
+    return decomp_tree[best_plan_id], decomp_high[best_plan_id], decomp_low[best_plan_id], info
 
-def main(_):
-    _, high, low = evaluate_plans()
-    data = {"high": high, "low": low}
-    with open(FLAGS.output, "w") as f:
-        f.write(json.dumps(data))
 
 if __name__ == "__main__":
+
+    # !python palo/optimize_language.py --instruction "First open the drawer, and then put the sweet potato into the opened drawer" --trajectory_path "./data" --checkpoint_path "./agent/checkpoint/" --im_size 224 --config_dir "./agent/config.pkl"
+
+    FLAGS = flags.FLAGS
+    flags.DEFINE_string(
+        "instruction",
+        "First open the drawer, and then put the sweet potato into the opened drawer",
+        "Instruction to be optimized",
+    )
+    flags.DEFINE_string("trajectory_path", "./data", "Path to the trajectories")
+    flags.DEFINE_string("checkpoint_path", "./agent/checkpoint/", "Path to the checkpoint")
+    flags.DEFINE_string("config_dir", "./agent/config.pkl", "Directory of config")
+    flags.DEFINE_integer("im_size", 224, "Size of the image")
+    flags.DEFINE_integer("max_subtask_steps", 18, "Maximum number of steps per subtask")
+    flags.DEFINE_integer("min_subtask_steps", 2, "Minimum number of steps per subtask")
+    flags.DEFINE_integer("max_episode_steps", 150, "Maximum number of steps in an episode")
+    flags.DEFINE_integer("num_language_samples", 15, "Number of plans to be sampled")
+    flags.DEFINE_integer("num_partition_samples", 8000, "Number of segment samples")
+    flags.DEFINE_string("output", "best_plan.json", "Output file name")
+    flags.DEFINE_bool("no_sample", False, "Whether to sample the partition boundaries")
+
+    def main(_):
+        with open("./agent/config.pkl", "rb") as f:
+            config = pickle.load(f)
+
+        action_metadata = config["bridgedata_config"]["action_metadata"]
+        action_mean = jnp.array(action_metadata["mean"])
+        action_std = jnp.array(action_metadata["std"])
+        unnormalize = lambda x: x * action_std + action_mean
+
+        trajectories = get_trajectories(FLAGS.trajectory_path, FLAGS.im_size, FLAGS.max_episode_steps)
+        policy, key = initialize_agent(config, FLAGS.checkpoint_path)
+        _, high, low, info = optimize_language(
+            key,
+            policy,
+            FLAGS.instruction,
+            trajectories,
+            unnormalize,
+            FLAGS.num_partition_samples,
+            FLAGS.num_language_samples,
+        )
+        data = {"high": high, "low": low}
+        with open(FLAGS.output, "w") as f:
+            f.write(json.dumps(data))
+
     app.run(main)
