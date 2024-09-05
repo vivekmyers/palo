@@ -33,11 +33,11 @@ def compute_cost(
 ):
     best_total_cost = jnp.inf
     best_total_segment = None
-    num_samples_total = num_partition_samples
     chunk_sz = 2000
     info = {"segments": [], "costs": []}
+    batched_itrs = int((num_partition_samples - 1) / chunk_sz + 1)
 
-    for chunk_idx in tqdm.tqdm(range(int((num_samples_total - 1) / chunk_sz + 1)), desc="sample segment"):
+    for chunk_idx in tqdm.tqdm(range(batched_itrs), desc="sample segment"):
         initial_image_obs = [{"image": observations[i][0], "proprio": states[i][0]} for i in range(len(observations))]
         unrolled_actions = []
         for x in range(len(observations)):
@@ -70,7 +70,7 @@ def compute_cost(
 
         key, next_key = jax.random.split(key)
 
-        num_samples_inner = chunk_sz if chunk_idx < num_samples_total // chunk_sz - 1 else num_samples_total % chunk_sz
+        num_samples_inner = chunk_sz if chunk_idx < batched_itrs else num_partition_samples % chunk_sz
         num_samples_inner = num_samples_inner or chunk_sz
         keys = jax.random.split(next_key, num_samples_inner)
         segmented_actions, segment_masks, bounds, sizes = jnp.vectorize(
