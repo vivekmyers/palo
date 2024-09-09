@@ -4,10 +4,8 @@ import jax
 import jax.numpy as jnp
 from openai import OpenAI
 import cv2
-import os
 import base64
 import json
-import time
 from PIL import Image
 import io
 import tensorflow as tf
@@ -94,7 +92,7 @@ def process_candidates(candidates: list[str]):
 
 def make_plan(obs, big_instr):
     cx = f"""
-    Here is an image observed by a robot in a robot manipulation task. The task is to {big_instr}. Now give me the steps in which the robot must take in order to accomplish this task. 
+    Here is an image observed by a robot in a robot manipulation task. The task is to {big_instr}. Now give me the steps in which the robot must take in order to accomplish this task.
 
     Assume that robots can take in command in the form of "put x into y". First start by identifying the items that are relevant, and then form the commands. Return a python list only
     """
@@ -118,9 +116,9 @@ def query_long_horizon(obs, instrs):
     obs = encode_image(obs)
     prompt = f"""
     Here is an image observed by the robot in a robot manipulation environment. The gripper is at the top left corner in the image.
-    Now plan for the the list of subtasks and skills the robot needs to perform in order to {instrs}. 
+    Now plan for the the list of subtasks and skills the robot needs to perform in order to {instrs}.
     A subtask is one set of actions connected in a logical manner. For example, \"put an object to some place\", \"Sweep some objects to the right\", and \"Open the drawer\" are valid subtasks.
-    
+
     For each subtask, you need to plan for the steps the robot needs to take in order to complete the subtask. Each step in the plan can be selected from the available skills below:
 
     *movement direction:
@@ -135,29 +133,29 @@ def query_long_horizon(obs, instrs):
         *close the gripper. This skill controls the robot gripper to close to grasp an object.
         *open the gripper. This skill controls the robot gripper to open and release the object in hand.
 
-    You may choose between using one of movement direction or gripper movement. 
+    You may choose between using one of movement direction or gripper movement.
     If you were to choose to use movement direction, you may use one or two directions and include a target object, and you should format it like this:
-    \"move the gripper x towards z\" or \"move the gripper x and y towards z\" where x and y are the directions and z is the target object. 
-    You also must start your command with \"move the gripper\". 
-    Therefore, instead of saying something like \"down\" or \"up\", you should phrase it like \"move the gripper down\" and \"move the gripper up\". 
+    \"move the gripper x towards z\" or \"move the gripper x and y towards z\" where x and y are the directions and z is the target object.
+    You also must start your command with \"move the gripper\".
+    Therefore, instead of saying something like \"down\" or \"up\", you should phrase it like \"move the gripper down\" and \"move the gripper up\".
     Make sure to include at least one direction in your command since otherwise this command format won't make sense.
 
-    If you were to choose to use gripper movement, you should format the command as \"close the gripper on x\" or \"open the gripper to release x\", where x is the target object. 
+    If you were to choose to use gripper movement, you should format the command as \"close the gripper on x\" or \"open the gripper to release x\", where x is the target object.
     You may discard the target object if necessary. In that case use \"close the gripper\" or \"open the gripper\".
     If you think the gripper is close to the target object, then you must choose to use gripper movement to grasp the target object to maintain efficiency.
-    If the task is related to sweeping, after you close the gripper, do not move up until after you have released the gripper. 
+    If the task is related to sweeping, after you close the gripper, do not move up until after you have released the gripper.
 
-    Pay close attention to these factors: 
+    Pay close attention to these factors:
     *Which task are you doing. If you are sweeping, then don't move up as the towel needs to be consistently on the surface.
-    *Whether the gripper is closed. 
+    *Whether the gripper is closed.
     *Whether the gripper is holding the target object.
     *How far the two target objects are. If they are across the table, then duplicate the commands with a copy of it.
     *Where the gripper is.
-    
-    Especially pay attention to the actual direction between the gripper and the target object. Remember that the robot's angle is roughly the same as the camera's angle. 
+
+    Especially pay attention to the actual direction between the gripper and the target object. Remember that the robot's angle is roughly the same as the camera's angle.
     If the target object is closer to the edge of the table that is near the top of the image, you should move forward, otherwise you should move backward.
 
-    Start by looking at what objects are in the image, and then plan with the direction of the objects in mind. The tasks should be completed sequentially, therefore you need to consider the position of the gripper after each task before planning the next task. 
+    Start by looking at what objects are in the image, and then plan with the direction of the objects in mind. The tasks should be completed sequentially, therefore you need to consider the position of the gripper after each task before planning the next task.
     You should return a json dictionary with the following fields:
      - subtask: this should be the key of the dictionary. It should contain the only the verbal description of the subtask the robot needs to perform sequentially in order to finish the task, and they should be ordered in the same way the task is completed.
      - list of skills for each subtask: this should be the value of the dictionary. It should be a list of skills the robot needs to perform in order to finish the corresponding subtask.
