@@ -122,7 +122,7 @@ def optimize_language(
 
     best_segment_per_inst_set = []
     decomp_tree = query_vlm.make_multiple_response(start, instruction, num_language_samples)
-    candidates_json, (decomp_high, decomp_low) = query_vlm.process_candidates(decomp_tree)
+    _, (decomp_high, decomp_low) = query_vlm.process_candidates(decomp_tree)
     info = []
 
     candidate_plan_costs = np.zeros([len(decomp_low)], dtype=float)

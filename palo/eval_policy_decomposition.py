@@ -1,4 +1,3 @@
-
 from datetime import datetime
 import os
 import time
@@ -78,14 +77,15 @@ STICKY_GRIPPER_NUM_STEPS = 2
 CAMERA_TOPICS = [{"name": "/blue/image_raw"}]
 ENV_PARAMS = {
     "camera_topics": CAMERA_TOPICS,
-    
     "move_duration": STEP_DURATION,
 }
 
 instr = [""]
 
+
 def unnormalize_action(action, mean, std):
     return action * std + mean
+
 
 def process_batch(batch):
     """
@@ -97,9 +97,7 @@ def process_batch(batch):
     lang_ids = batch["goals"]["language"]
     lang_mask = jnp.array(lang_ids >= 0)
     sents = ["placeholder" for x in lang_ids]
-    
 
-    
     lang_inputs = jnp.zeros((len(lang_ids), 512))
 
     obs_img = batch["observations"]["image"]
@@ -122,6 +120,7 @@ def process_batch(batch):
     add_or_replace["bc_mask"] = jnp.ones(batch["observations"]["image"].shape[0])
 
     return batch.copy(add_or_replace=add_or_replace)
+
 
 def initialize_agent(run, checkpoint_path):
     encoder_def = encoders[run.config["encoder"]](**run.config["encoder_kwargs"])
@@ -147,7 +146,7 @@ def initialize_agent(run, checkpoint_path):
     example_batch = process_batch(example_batch)
 
     print("\n\nRun config kwargs: ", run.config["agent_kwargs"])
-    
+
     rng = jax.random.PRNGKey(0)
     rng, construct_rng = jax.random.split(rng)
     agent = agents[run.config["agent"]].create(
@@ -167,13 +166,13 @@ def initialize_agent(run, checkpoint_path):
         tf.io.gfile.makedirs(checkpoint_local_path)
         tf.io.gfile.copy(os.path.join(checkpoint_path, "checkpoint"), os.path.join(checkpoint_local_path, "checkpoint"))
 
-    
     agent = checkpoints.restore_checkpoint(checkpoint_path, agent)
 
     return agent, rng
 
+
 def main(_):
-    
+
     if FLAGS.initial_eep is not None:
         assert isinstance(FLAGS.initial_eep, list)
         initial_eep = [float(e) for e in FLAGS.initial_eep]
@@ -192,12 +191,11 @@ def main(_):
 
     env = HistoryWrapper(env, 1)
     env = TemporalEnsembleWrapper(env, 1)
-    
+
     api = wandb.Api()
     print("wandb run name, ", FLAGS.wandb_run_name)
     run = api.run(FLAGS.wandb_run_name)
 
-    
     action_metadata = run.config["bridgedata_config"]["action_metadata"]
     action_mean = np.array(action_metadata["mean"])
     action_std = np.array(action_metadata["std"])
@@ -210,7 +208,6 @@ def main(_):
     modality = FLAGS.modality[:1]
     if modality not in ["g", "l", ""]:
         modality = ""
-    
 
     while True:
         modality = "language"
@@ -237,10 +234,8 @@ def main(_):
             except Exception as e:
                 pass
 
-        
         time.sleep(2.0)
 
-        
         last_tstep = time.time()
         images = []
         t = 0
@@ -265,7 +260,7 @@ def main(_):
                         print("new low level: ", new_low_level)
                         if "neutral" in new_low_level:
                             print("Do we get here? ")
-                            action_per_step = (start_state[:6] - obs["state"].flatten()[:6]) / 10  
+                            action_per_step = (start_state[:6] - obs["state"].flatten()[:6]) / 10
                             for _ in range(10):
                                 obs, _, _, truncated, _ = env.step(np.concatenate([action_per_step, np.array([1])]))
                                 full_images.append(env.raw_obs)
@@ -279,7 +274,7 @@ def main(_):
                             initial_obs = {"image": obs["image_primary"][0], "proprio": obs["state"]}
                             rng = jax.random.PRNGKey(0)
                             rng, construct_rng = jax.random.split(rng)
-                            t += FLAGS.primitive_interval  
+                            t += FLAGS.primitive_interval
                             continue
                         else:
                             goal_obs = {}
@@ -293,7 +288,6 @@ def main(_):
                     last_tstep = time.time()
                     obs_x = {"image": image_obs, "proprio": obs["state"]}
 
-                    
                     images.append(obs["image_primary"][-1])
                     if FLAGS.show_image:
                         bgr_img = cv2.cvtColor(obs["image_primary"][-1], cv2.COLOR_RGB2BGR)
@@ -301,7 +295,7 @@ def main(_):
                         cv2.waitKey(20)
 
                     rng, key = jax.random.split(rng)
-                    
+
                     forward_pass_time = time.time()
                     action = np.array(
                         agent.sample_actions(
@@ -315,15 +309,11 @@ def main(_):
                     )
                     action = unnormalize_action(action, action_mean, action_std)
                     print(action)
-                    
 
-                    
                     traj.append(dict(obs=obs, action=action, goal_instruction=goal_instruction, goal_image=goal_image))
 
-                    
                     start_time = time.time()
                     obs, _, _, truncated, _ = env.step(action)
-                    
 
                     t += 1
                     if truncated:
@@ -346,7 +336,7 @@ def main(_):
                     pickle.dump(traj, f)
                 print(f"Saved trajectory to {save_path}")
             traj = []
-            
+
             if FLAGS.video_save_path is not None:
                 os.makedirs(FLAGS.video_save_path, exist_ok=True)
                 curr_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -358,6 +348,7 @@ def main(_):
                 imageio.mimsave(save_path, video, fps=1.0 / STEP_DURATION * 3)
                 print(f"Saved video to {save_path}")
             full_images = [env.raw_obs]
+
 
 if __name__ == "__main__":
     app.run(main)

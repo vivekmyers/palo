@@ -24,6 +24,7 @@ from jaxrl_m.networks.actor_critic_nets import Policy
 from jaxrl_m.networks.actor_critic_nets import Critic
 from jaxrl_m.networks.actor_critic_nets import ActorCriticWrapper
 
+
 class GCIQLAgent(flax.struct.PyTreeNode):
     state: JaxRLTrainState
     config: dict = nonpytree_field()
@@ -40,12 +41,10 @@ class GCIQLAgent(flax.struct.PyTreeNode):
                 rngs={"dropout": key},
                 method="value",
             )
-            target_q = (
-                batch["rewards"] + self.config["discount"] * next_v * batch["masks"]
-            )
+            target_q = batch["rewards"] + self.config["discount"] * next_v * batch["masks"]
             rng, key = jax.random.split(rng)
             q = self.state.apply_fn(
-                {"params": params},  
+                {"params": params},
                 (batch["observations"], batch["goals"]),
                 batch["actions"],
                 train=True,
@@ -57,7 +56,7 @@ class GCIQLAgent(flax.struct.PyTreeNode):
         def value_loss_fn(params, rng):
             rng, key = jax.random.split(rng)
             q = self.state.apply_fn(
-                {"params": self.state.params},  
+                {"params": self.state.params},
                 (batch["observations"], batch["goals"]),
                 batch["actions"],
                 train=self.config["dropout_target_networks"],
@@ -66,7 +65,7 @@ class GCIQLAgent(flax.struct.PyTreeNode):
             )
             rng, key = jax.random.split(rng)
             v = self.state.apply_fn(
-                {"params": params},  
+                {"params": params},
                 (batch["observations"], batch["goals"]),
                 train=True,
                 rngs={"dropout": key},
@@ -83,13 +82,11 @@ class GCIQLAgent(flax.struct.PyTreeNode):
                 rngs={"dropout": key},
                 method="value",
             )
-            target_q = (
-                batch["rewards"] + self.config["discount"] * next_v * batch["masks"]
-            )
+            target_q = batch["rewards"] + self.config["discount"] * next_v * batch["masks"]
 
             rng, key = jax.random.split(rng)
             v = self.state.apply_fn(
-                {"params": self.state.params},  
+                {"params": self.state.params},
                 (batch["observations"], batch["goals"]),
                 train=self.config["dropout_target_networks"],
                 rngs={"dropout": key},
@@ -98,7 +95,7 @@ class GCIQLAgent(flax.struct.PyTreeNode):
 
             rng, key = jax.random.split(rng)
             dist = self.state.apply_fn(
-                {"params": params},  
+                {"params": params},
                 (batch["observations"], batch["goals"]),
                 train=True,
                 rngs={"dropout": key},
@@ -120,15 +117,10 @@ class GCIQLAgent(flax.struct.PyTreeNode):
             "actor": actor_loss_fn,
         }
 
-        
-        new_state, info = self.state.apply_loss_fns(
-            loss_fns, pmap_axis=pmap_axis, has_aux=True
-        )
+        new_state, info = self.state.apply_loss_fns(loss_fns, pmap_axis=pmap_axis, has_aux=True)
 
-        
         new_state = new_state.target_update(self.config["target_update_rate"])
 
-        
         info["actor_lr"] = self.lr_schedules["actor"](self.state.step)
 
         return self.replace(state=new_state), info
@@ -221,7 +213,6 @@ class GCIQLAgent(flax.struct.PyTreeNode):
         observations: FrozenDict,
         goals: FrozenDict,
         actions: jnp.ndarray,
-        
         encoder_def: nn.Module,
         shared_encoder: bool = True,
         shared_goal_encoder: bool = True,
@@ -235,11 +226,9 @@ class GCIQLAgent(flax.struct.PyTreeNode):
             "tanh_squash_distribution": False,
             "state_dependent_std": False,
         },
-        
         learning_rate: float = 3e-4,
         warmup_steps: int = 2000,
         actor_decay_steps: Optional[int] = None,
-        
         discount=0.95,
         expectile=0.9,
         temperature=1.0,
@@ -247,7 +236,7 @@ class GCIQLAgent(flax.struct.PyTreeNode):
         dropout_target_networks=True,
     ):
         if early_goal_concat:
-            
+
             goal_encoder_def = None
         else:
             if shared_goal_encoder:
@@ -269,8 +258,7 @@ class GCIQLAgent(flax.struct.PyTreeNode):
                 "critic": encoder_def,
             }
         else:
-            
-            
+
             encoders = {
                 "actor": encoder_def,
                 "value": copy.deepcopy(encoder_def),
@@ -278,9 +266,7 @@ class GCIQLAgent(flax.struct.PyTreeNode):
             }
 
         networks = {
-            "actor": Policy(
-                action_dim=actions.shape[-1], **network_kwargs, **policy_kwargs
-            ),
+            "actor": Policy(action_dim=actions.shape[-1], **network_kwargs, **policy_kwargs),
             "value": ValueCritic(**network_kwargs),
             "critic": Critic(**network_kwargs),
         }
@@ -293,7 +279,6 @@ class GCIQLAgent(flax.struct.PyTreeNode):
         rng, init_rng = jax.random.split(rng)
         params = model_def.init(init_rng, (observations, goals), actions)["params"]
 
-        
         lr_schedule = optax.warmup_cosine_decay_schedule(
             init_value=0.0,
             peak_value=learning_rate,

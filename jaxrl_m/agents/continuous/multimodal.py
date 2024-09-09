@@ -1,6 +1,5 @@
-import copy
 from functools import partial
-from typing import Any, Dict, List, Callable
+from typing import Any, List
 import itertools
 import jax
 import jax.numpy as jnp
@@ -23,6 +22,7 @@ from jaxrl_m.data.language import lang_decode
 from jaxrl_m.vision.clip import process_image, process_text
 from flax import traverse_util
 
+
 def find_and_replace(params, key, replacement):
     for k in params.keys():
         if k == key:
@@ -32,7 +32,9 @@ def find_and_replace(params, key, replacement):
         if isinstance(params[k], type(params)):
             find_and_replace(params[k], key, replacement)
 
+
 from flax.core.frozen_dict import freeze
+
 
 class MultimodalAgent(flax.struct.PyTreeNode):
     state: JaxRLTrainState
@@ -46,28 +48,22 @@ class MultimodalAgent(flax.struct.PyTreeNode):
 
     @classmethod
     def process_goals(cls, modality, goals):
-        
-        
+
         if modality == "image":
             reps = goals[modality]
             mask = jnp.ones(goals[modality].shape[0], dtype=bool)
 
-        
-        
-        
-        
-        
         if modality == "language":
             reps1 = goals[modality]
             reps2 = jnp.zeros_like(reps1)
             reps = jnp.concatenate((reps1, reps2), axis=1)
             mask = goals["language_mask"]
-        if modality =="language_low_level":
-            reps2 = goals[modality] 
+        if modality == "language_low_level":
+            reps2 = goals[modality]
             reps1 = jnp.zeros_like(reps2)
             reps = jnp.concatenate((reps1, reps2), axis=1)
             mask = goals["language_low_level_mask"]
-        if modality == "language_joint": 
+        if modality == "language_joint":
             reps = goals[modality]
             mask = goals["language_mask"] & goals["language_low_level_mask"]
         goals = dict(goals)
@@ -123,28 +119,24 @@ class MultimodalAgent(flax.struct.PyTreeNode):
         )
 
     @partial(jax.jit, static_argnames="name")
-    def compute_alignment_loss(
-        self, rep1, rep2, mask1, mask2, temp, name, inter_dataset_mask
-    ):
+    def compute_alignment_loss(self, rep1, rep2, mask1, mask2, temp, name, inter_dataset_mask):
         rep1_ = rep1[:, None, ...]
         rep2_ = rep2[None, :, ...]
 
         if self.metric == "l2":
             sim = -jnp.sum(jnp.square(rep1_ - rep2_), axis=-1)
         elif self.metric == "downscaled_l2":
-            
+
             sim = -jnp.sum(jnp.square(rep1_ - rep2_), axis=-1) / 64
         elif self.metric == "cosine":
             sim = jnp.sum(rep1_ * rep2_, axis=-1) / (
-                jnp.linalg.norm(rep1_, ord=2, axis=-1)
-                * jnp.linalg.norm(rep2_, ord=2, axis=-1)
+                jnp.linalg.norm(rep1_, ord=2, axis=-1) * jnp.linalg.norm(rep2_, ord=2, axis=-1)
             )
         elif self.metric == "mse":
             sim = -jnp.mean(jnp.square(rep1_ - rep2_), axis=-1)
         elif self.metric == "cosine_loss":
             sim = jnp.sum(rep1_ * rep2_, axis=-1) / (
-                jnp.linalg.norm(rep1_, ord=2, axis=-1)
-                * jnp.linalg.norm(rep2_, ord=2, axis=-1)
+                jnp.linalg.norm(rep1_, ord=2, axis=-1) * jnp.linalg.norm(rep2_, ord=2, axis=-1)
             )
             valid = mask1 & mask2
             unscaled_loss = -jnp.sum(jnp.diag(sim) * valid) / jnp.sum(valid)
@@ -164,7 +156,7 @@ class MultimodalAgent(flax.struct.PyTreeNode):
         mask2 = mask2 | skip
 
         weight = sim / jnp.clip(jnp.exp(temp), a_min=0.01, a_max=100)
-        weight = weight - inter_dataset_mask * 1e9  
+        weight = weight - inter_dataset_mask * 1e9
         class1 = jax.nn.log_softmax(weight, where=mask1[:, None], initial=0.0, axis=0)
         class2 = jax.nn.log_softmax(weight, where=mask2[None, :], initial=0.0, axis=1)
 
@@ -191,7 +183,7 @@ class MultimodalAgent(flax.struct.PyTreeNode):
     def update(self, batch: Batch, pmap_axis: str = None):
         goals = batch["goals"]
         masks = []
-        
+
         for mod in self.modalities:
             goals, mask = self.process_goals(mod, goals)
             masks.append(mask)
@@ -214,7 +206,7 @@ class MultimodalAgent(flax.struct.PyTreeNode):
             info = {}
             outputs = []
 
-            for mod, mask in zip(self.modalities, masks): 
+            for mod, mask in zip(self.modalities, masks):
                 observations = batch["observations"]
                 actions = batch["actions"]
                 freeze_mask = (sum(masks) <= 1) & self.freeze_task_B
@@ -233,10 +225,10 @@ class MultimodalAgent(flax.struct.PyTreeNode):
                 info.update(aux)
 
                 if self.flatten_task_reps:
-                    
+
                     task = [t.reshape((t.shape[0], -1)) for t in task]
                     task = jnp.concatenate(task, axis=-1)
-                
+
                 for mod_, mask_, task_ in zip(self.modalities, masks, outputs):
                     name = f"{mod_}_{mod}"
                     temp = param["contrastive_temp"]
@@ -250,7 +242,7 @@ class MultimodalAgent(flax.struct.PyTreeNode):
                         name=name,
                         inter_dataset_mask=batch["inter_dataset_mask"],
                     )
-                    total_loss += loss_ * 0 
+                    total_loss += loss_ * 0
                     info.update(aux_)
 
                 outputs.append(task)
@@ -261,7 +253,6 @@ class MultimodalAgent(flax.struct.PyTreeNode):
         return self.state.apply_loss_fns(loss_fn, pmap_axis=pmap_axis, has_aux=True)
         new_state, info = self.minimize_losses(bc_data, alignment_data, pmap_axis)
 
-        
         info["lr"] = self.lr_schedule(self.state.step)
 
         return new_state, info
@@ -329,7 +320,6 @@ class MultimodalAgent(flax.struct.PyTreeNode):
         actions: jnp.ndarray,
         initial_obs: FrozenDict,
         goals: FrozenDict,
-        
         encoder_def: nn.Module,
         task_encoder_defs: dict,
         early_fusion: bool,
@@ -345,7 +335,6 @@ class MultimodalAgent(flax.struct.PyTreeNode):
             "state_dependent_std": False,
             "dropout": 0.0,
         },
-        
         learning_rate: float = 3e-4,
         warmup_steps: int = 1000,
         decay_steps: int = 1000000,
@@ -372,11 +361,7 @@ class MultimodalAgent(flax.struct.PyTreeNode):
         modalities = list(task_encoder_defs)
 
         encoders = {"actor": (encoder_def, task_encoder_defs)}
-        networks = {
-            "actor": Policy(
-                action_dim=actions.shape[-1], **network_kwargs, **policy_kwargs
-            )
-        }
+        networks = {"actor": Policy(action_dim=actions.shape[-1], **network_kwargs, **policy_kwargs)}
 
         model_def = MultimodalActorCriticWrapper(
             encoders=encoders,
@@ -436,12 +421,9 @@ class MultimodalAgent(flax.struct.PyTreeNode):
                     return True
 
         param_partitions = freeze(
-            traverse_util.path_aware_map(
-                lambda path, v: "encoder" if is_clip_encoder(path) else "actor", params
-            )
+            traverse_util.path_aware_map(lambda path, v: "encoder" if is_clip_encoder(path) else "actor", params)
         )
 
-        
         tx = optax.multi_transform(partition_optimizers, param_partitions)
 
         flat = list(traverse_util.flatten_dict(param_partitions).items())

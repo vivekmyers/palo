@@ -131,66 +131,32 @@ def main(_):
 
     assert type(FLAGS.bridgedata_config.include[0]) == list
     task_paths = [
-        glob_to_path_list(
-            path, prefix=FLAGS.config.data_path, exclude=FLAGS.bridgedata_config.exclude
-        )
+        glob_to_path_list(path, prefix=FLAGS.config.data_path, exclude=FLAGS.bridgedata_config.exclude)
         for path in FLAGS.bridgedata_config.include
     ]
 
-    train_paths = [
-        [os.path.join(path, "train/out.tfrecord") for path in sub_list]
-        for sub_list in task_paths
-    ]
-    val_paths = [
-        [os.path.join(path, "val/out.tfrecord") for path in sub_list]
-        for sub_list in task_paths
-    ]
-    train_paths = [
-        [path for path in sub_list if tf.io.gfile.exists(path)]
-        for sub_list in train_paths
-    ]
-    val_paths = [
-        [path for path in sub_list if tf.io.gfile.exists(path)]
-        for sub_list in val_paths
-    ]
+    train_paths = [[os.path.join(path, "train/out.tfrecord") for path in sub_list] for sub_list in task_paths]
+    val_paths = [[os.path.join(path, "val/out.tfrecord") for path in sub_list] for sub_list in task_paths]
+    train_paths = [[path for path in sub_list if tf.io.gfile.exists(path)] for sub_list in train_paths]
+    val_paths = [[path for path in sub_list if tf.io.gfile.exists(path)] for sub_list in val_paths]
 
     align_task_paths = [
-        glob_to_path_list(
-            path, prefix=FLAGS.config.data_path, exclude=FLAGS.bridgedata_config.exclude
-        )
+        glob_to_path_list(path, prefix=FLAGS.config.data_path, exclude=FLAGS.bridgedata_config.exclude)
         for path in FLAGS.bridgedata_config.align_include
     ]
-    align_val_paths = [
-        [os.path.join(path, "val/out.tfrecord") for path in sub_list]
-        for sub_list in align_task_paths
-    ]
-    align_val_paths = [
-        [path for path in sub_list if tf.io.gfile.exists(path)]
-        for sub_list in align_val_paths
-    ]
+    align_val_paths = [[os.path.join(path, "val/out.tfrecord") for path in sub_list] for sub_list in align_task_paths]
+    align_val_paths = [[path for path in sub_list if tf.io.gfile.exists(path)] for sub_list in align_val_paths]
 
     scene_task_paths = [
-        glob_to_path_list(
-            path, prefix=FLAGS.config.data_path, exclude=FLAGS.bridgedata_config.exclude
-        )
+        glob_to_path_list(path, prefix=FLAGS.config.data_path, exclude=FLAGS.bridgedata_config.exclude)
         for path in FLAGS.bridgedata_config.val_scene_include
     ]
     scene_train_paths = [
-        [os.path.join(path, "train/out.tfrecord") for path in sub_list]
-        for sub_list in scene_task_paths
+        [os.path.join(path, "train/out.tfrecord") for path in sub_list] for sub_list in scene_task_paths
     ]
-    scene_train_paths = [
-        [path for path in sub_list if tf.io.gfile.exists(path)]
-        for sub_list in scene_train_paths
-    ]
-    scene_val_paths = [
-        [os.path.join(path, "val/out.tfrecord") for path in sub_list]
-        for sub_list in scene_task_paths
-    ]
-    scene_val_paths = [
-        [path for path in sub_list if tf.io.gfile.exists(path)]
-        for sub_list in scene_val_paths
-    ]
+    scene_train_paths = [[path for path in sub_list if tf.io.gfile.exists(path)] for sub_list in scene_train_paths]
+    scene_val_paths = [[os.path.join(path, "val/out.tfrecord") for path in sub_list] for sub_list in scene_task_paths]
+    scene_val_paths = [[path for path in sub_list if tf.io.gfile.exists(path)] for sub_list in scene_val_paths]
     assert len(scene_val_paths[0]) > 0
 
     lang_ids = list(lang_encodings().keys())
@@ -201,9 +167,9 @@ def main(_):
 
     if FLAGS.config.domain_weight is not None:
 
-        sample_weights = [(1 - FLAGS.config.domain_weight) / len(train_paths)] * len(
-            train_paths
-        ) + [FLAGS.config.domain_weight]
+        sample_weights = [(1 - FLAGS.config.domain_weight) / len(train_paths)] * len(train_paths) + [
+            FLAGS.config.domain_weight
+        ]
 
         train_data = BridgeDataset(
             train_paths + scene_train_paths,
@@ -286,23 +252,15 @@ def main(_):
         lang_ids_low_lvl = batch["language_low_level"]
         lang_mask = jnp.array(lang_ids >= 0)
         if "bridgedata" in data_split:
-            sents = [
-                lang_decode(x, aug=FLAGS.config.augment_language) for x in lang_ids
-            ]
-            sents_low_lvl = [
-                lang_decode(x, aug=FLAGS.config.augment_language)
-                for x in lang_ids_low_lvl
-            ]
+            sents = [lang_decode(x, aug=FLAGS.config.augment_language) for x in lang_ids]
+            sents_low_lvl = [lang_decode(x, aug=FLAGS.config.augment_language) for x in lang_ids_low_lvl]
         elif "ss2" in data_split:
             sents = [lang_decode_ss2(x) for x in lang_ids]
             sents_low_lvl = [lang_decode_ss2(x) for x in lang_ids_low_lvl]
         sents = [s if s is not None else "" for s in sents]
         sents_low_lvl = [s if s is not None else "" for s in sents_low_lvl]
         lang_mask_low_lvl = jnp.array([x != "" for x in sents_low_lvl])
-        if (
-            not FLAGS.config.use_text_embeddings
-            and not FLAGS.config.use_text_embeds_as_inputs
-        ):
+        if not FLAGS.config.use_text_embeddings and not FLAGS.config.use_text_embeds_as_inputs:
             if "clip" in FLAGS.config.task_encoders["language"]:
                 lang_inputs = process_text(sents)
                 lang_inputs_low_lvl = process_text(sents_low_lvl)
@@ -343,9 +301,7 @@ def main(_):
 
         for key in ["observations", "initial_obs"]:
             if "unprocessed_image" in batch[key]:
-                processed_batch[key]["unprocessed_image"] = batch[key][
-                    "unprocessed_image"
-                ]
+                processed_batch[key]["unprocessed_image"] = batch[key]["unprocessed_image"]
 
         if "image_embed" in batch:
             if FLAGS.config.use_image_embeds_as_inputs:
@@ -363,22 +319,16 @@ def main(_):
             processed_batch["actions"] = jnp.ones(
                 (batch["observations"]["image"].shape[0], 7),
             )
-            processed_batch["bc_mask"] = jnp.zeros(
-                batch["observations"]["image"].shape[0]
-            )
+            processed_batch["bc_mask"] = jnp.zeros(batch["observations"]["image"].shape[0])
         else:
             processed_batch["actions"] = batch["actions"]
-            processed_batch["bc_mask"] = jnp.ones(
-                batch["observations"]["image"].shape[0]
-            )
+            processed_batch["bc_mask"] = jnp.ones(batch["observations"]["image"].shape[0])
 
         return FrozenDict(processed_batch)
 
     processed_train_iters = {}
     if FLAGS.config.ss2_batch_size > 0:
-        processed_train_iters["ss2"] = map(
-            partial(process_batch, data_split="ss2"), train_data_iters["ss2"]
-        )
+        processed_train_iters["ss2"] = map(partial(process_batch, data_split="ss2"), train_data_iters["ss2"])
     processed_train_iters["bridgedata"] = map(
         partial(process_batch, data_split="bridgedata"), train_data_iters["bridgedata"]
     )
@@ -403,34 +353,27 @@ def main(_):
     example_batch = next(train_data_iter)
     logging.info(f"Batch size: {example_batch['observations']['image'].shape[0]}")
     logging.info(f"Number of devices: {num_devices}")
-    logging.info(
-        f"Batch size per device: {example_batch['observations']['image'].shape[0] // num_devices}"
-    )
+    logging.info(f"Batch size per device: {example_batch['observations']['image'].shape[0] // num_devices}")
 
     sharding = jax.sharding.PositionalSharding(devices)
     example_batch = shard_batch(example_batch, sharding)
 
     encoder_def = encoders[FLAGS.config.encoder](**FLAGS.config.encoder_kwargs)
     task_encoder_defs = {
-        mod: encoders[arch](**FLAGS.config.task_encoder_kwargs[mod])
-        for mod, arch in FLAGS.config.task_encoders.items()
+        mod: encoders[arch](**FLAGS.config.task_encoder_kwargs[mod]) for mod, arch in FLAGS.config.task_encoders.items()
     }
 
     if "drop_encoders" in FLAGS.config and FLAGS.config.drop_encoders:
 
-        task_encoder_defs = {
-            mod: lambda x: x for mod in FLAGS.config.task_encoders.keys()
-        }
+        task_encoder_defs = {mod: lambda x: x for mod in FLAGS.config.task_encoders.keys()}
 
     pretrained_params = {}
-    if "clip" in FLAGS.config.task_encoders.get(
-        "image", {}
-    ) or "clip" in FLAGS.config.task_encoders.get("language", {}):
+    if "clip" in FLAGS.config.task_encoders.get("image", {}) or "clip" in FLAGS.config.task_encoders.get(
+        "language", {}
+    ):
         global clip_module_vars
         if FLAGS.config.clip_resume_path:
-            clip_module_vars = load_params_from_contrastive_checkpoint(
-                FLAGS.config.clip_resume_path
-            )
+            clip_module_vars = load_params_from_contrastive_checkpoint(FLAGS.config.clip_resume_path)
 
         for module_key in clip_module_vars:
 
@@ -481,9 +424,7 @@ def main(_):
                     process_batch_ = partial(process_batch, data_split=split)
                     val_data_iter = map(process_batch_, val_data.get_iterator())
 
-                    for batch in tqdm.tqdm(
-                        val_data_iter, total=len(val_paths), leave=False
-                    ):
+                    for batch in tqdm.tqdm(val_data_iter, total=len(val_paths), leave=False):
                         batch = shard_batch(batch, sharding)
                         metrics.append(agent.get_metrics(batch))
                     metrics = jax.tree_map(lambda *xs: np.mean(xs), *metrics)
@@ -492,9 +433,7 @@ def main(_):
 
         if (i + 1) % FLAGS.config.save_interval == 0:
             logging.info("Saving checkpoint...")
-            checkpoint_path = checkpoints.save_checkpoint(
-                save_dir, agent, step=i + 1, keep=1e6
-            )
+            checkpoint_path = checkpoints.save_checkpoint(save_dir, agent, step=i + 1, keep=1e6)
             logging.info("Saved checkpoint to %s", checkpoint_path)
 
 
