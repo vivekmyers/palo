@@ -1,6 +1,6 @@
 ## Policy Adaptation via Language Optimization: Decomposing Tasks for Few-Shot Imitation
 [![arXiv](https://img.shields.io/badge/arXiv-2408.16228-df2a2a.svg)](https://arxiv.org/pdf/2408.16228)
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://githubtocolab.com/rail-berkeley/crossformer/blob/main/inference_pretrained.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/10V2qIVl3IONsCbul3TtZYwxA_-I4oOAG#scrollTo=XzHIDBfKBbDv)
 [![Python](https://img.shields.io/badge/python-3.10-blue)](https://www.python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Static Badge](https://img.shields.io/badge/Project-Page-a)](https://palo-website.github.io/)
