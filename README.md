@@ -34,6 +34,8 @@ See the [Jax Github page](https://github.com/google/jax) for more details on ins
 To get the best language decomposition from PALO, you can run the following commands:
 
 ```
+python palo/optimize.py --instruction [Your Instruction Here] --trajectory_path [Your data here] \
+ --checkpoint_path "./agent/checkpoint/" --im_size 224 --config_dir "./agent/config.pkl"
 ```
 
 ## Citation
