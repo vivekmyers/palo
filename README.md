@@ -27,7 +27,14 @@ pip install --upgrade "jax[tpu]" -f https://storage.googleapis.com/jax-releases/
 ```
 See the [Jax Github page](https://github.com/google/jax) for more details on installing Jax. 
 
+## Using PALO
 
+### Running Optimization
+
+To get the best language decomposition from PALO, you can run the following commands:
+
+```
+```
 
 ## Citation
 PLease consider citing our work if you find it useful:
