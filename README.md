@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Static Badge](https://img.shields.io/badge/Project-Page-a)](https://palo-website.github.io/)
 
-[Vivek Myers](https://people.eecs.berkeley.edu/~vmyers/), Bill Chunyuan Zheng, [Oier Mees](https://www.oiermees.com/), [Sergey Levine](https://people.eecs.berkeley.edu/~svlevine/), [Kuan Fang](https://kuanfang.github.io/)
+[Vivek Myers](https://people.eecs.berkeley.edu/~vmyers/), [Bill Chunyuan Zheng](https://wj2003b.github.io), [Oier Mees](https://www.oiermees.com/), [Sergey Levine](https://people.eecs.berkeley.edu/~svlevine/), [Kuan Fang](https://kuanfang.github.io/)
 <hr style="border: 2px solid gray;"></hr>
 
 This repository contains the code for Policy Adaptation via Language Optimization (PALO), which combines a handful of demonstrations of a task with proposed language decompositions sampled from a VLM to quickly enable rapid nonparametric adaptation, avoiding the need for a larger fine-tuning dataset.  
